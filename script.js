@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════
-// 🤖 CHKEIR ROBOT - Complete Script
+// 🤖 CHKEIR ROBOT - v3 (Enhanced Arabic Support)
 // Created by Mahdi Chkeir 🇱🇧
 // ═══════════════════════════════════════════════
 
-// Elements
 const splashScreen = document.getElementById('splashScreen');
 const welcomeScreen = document.getElementById('welcomeScreen');
 const userNameInput = document.getElementById('userNameInput');
@@ -31,8 +30,8 @@ const statusText = document.getElementById('statusText');
 const langBadge = document.getElementById('langBadge');
 const toast = document.getElementById('toast');
 
-// State
 let userName = '';
+let userNameArabic = ''; // Arabic version for TTS
 let conversationHistory = [];
 let isProcessing = false;
 let voiceEnabled = true;
@@ -43,24 +42,105 @@ let voices = [];
 let currentLang = 'auto';
 let pendingImage = null;
 let codeFilesCounter = 0;
-let allCodeFiles = {}; // { messageId: { fileName: content } }
+let allCodeFiles = {};
+
+// ═══ Convert name to Arabic for TTS ═══
+// Common Arabizi → Arabic mappings
+function nameToArabic(name) {
+    if (!name) return '';
+    
+    // If already Arabic, return as is
+    if (/[\u0600-\u06FF]/.test(name)) return name;
+    
+    const lower = name.toLowerCase().trim();
+    
+    // Common Lebanese/Arabic names
+    const nameMap = {
+        'mahdi': 'مَهْدي',
+        'mehdi': 'مَهْدي',
+        'mahdy': 'مَهْدي',
+        'ahmad': 'أَحْمَد',
+        'ahmed': 'أَحْمَد',
+        'mohamad': 'مُحَمَّد',
+        'mohammed': 'مُحَمَّد',
+        'mohammad': 'مُحَمَّد',
+        'mohamed': 'مُحَمَّد',
+        'ali': 'عَلي',
+        'hussein': 'حُسَين',
+        'hassan': 'حَسَن',
+        'omar': 'عُمَر',
+        'khaled': 'خالِد',
+        'karim': 'كَريم',
+        'sami': 'سامي',
+        'samir': 'سَمير',
+        'tarek': 'طارِق',
+        'rami': 'رامي',
+        'nadia': 'ناديا',
+        'sara': 'سارا',
+        'sarah': 'سارا',
+        'leila': 'لَيْلى',
+        'layla': 'لَيْلى',
+        'maya': 'مايا',
+        'rana': 'رانا',
+        'lara': 'لارا',
+        'nour': 'نور',
+        'noor': 'نور',
+        'yasmin': 'ياسمين',
+        'fatima': 'فاطِما',
+        'fatma': 'فاطِما',
+        'zeinab': 'زَيْنَب',
+        'zeina': 'زينا',
+        'reem': 'ريم',
+        'lina': 'لينا',
+        'dana': 'دانا',
+        'tala': 'تالا'
+    };
+    
+    if (nameMap[lower]) return nameMap[lower];
+    
+    // Try to phonetically convert
+    return phoneticArabic(lower);
+}
+
+function phoneticArabic(name) {
+    // Basic phonetic mapping for unknown names
+    const map = {
+        'sh': 'ش', 'ch': 'ش', 'th': 'ث', 'ph': 'ف', 'kh': 'خ', 'gh': 'غ',
+        'a': 'ا', 'b': 'ب', 'c': 'ك', 'd': 'د', 'e': 'ي', 'f': 'ف',
+        'g': 'ج', 'h': 'ه', 'i': 'ي', 'j': 'ج', 'k': 'ك', 'l': 'ل',
+        'm': 'م', 'n': 'ن', 'o': 'و', 'p': 'ب', 'q': 'ق', 'r': 'ر',
+        's': 'س', 't': 'ت', 'u': 'و', 'v': 'ف', 'w': 'و', 'x': 'كس',
+        'y': 'ي', 'z': 'ز'
+    };
+    
+    let result = '';
+    let i = 0;
+    while (i < name.length) {
+        const two = name.substring(i, i + 2);
+        if (map[two]) {
+            result += map[two];
+            i += 2;
+        } else {
+            const one = name[i];
+            result += map[one] || one;
+            i++;
+        }
+    }
+    return result;
+}
 
 // ═══ Toast ═══
 function showToast(message, type = 'normal', duration = 3000) {
     toast.textContent = message;
     toast.className = 'toast show ' + type;
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, duration);
+    setTimeout(() => toast.classList.remove('show'), duration);
 }
 
 // ═══ Splash ═══
 function hideSplash() {
     setTimeout(() => {
         splashScreen.classList.add('hide');
-        setTimeout(() => {
-            splashScreen.style.display = 'none';
-        }, 600);
+        setTimeout(() => { splashScreen.style.display = 'none'; }, 600);
     }, 2200);
 }
 
@@ -142,22 +222,27 @@ function showMainApp() {
     welcomeScreen.style.display = 'none';
     mainApp.style.display = 'flex';
     userGreeting.textContent = userName;
+    userNameArabic = nameToArabic(userName);
     
     if (chatArea.children.length === 0) {
-        const welcomeMsg = `Hi ${userName}! أهلاً ${userName}!
+        const welcomeMsg = `أهلاً ${userName}! Hi ${userName}!
 
-I can help you with:
-• 💬 Chat in 3 languages (AR/EN/Arabizi)
-• 📷 Read images & screenshots
-• 💻 Build complete projects (with ZIP download!)
-• 📚 Studies & homework
-• 🎙️ Voice conversation
-• 🧮 Math, physics, chemistry
-• 🌍 Translation
+أنا CHKEIR ROBOT، مساعدك الذكي.
 
-Just ask me anything!`;
+بقدر ساعدك بـ:
+• محادثة بالعربي / English / Arabizi
+• قراءة الصور والـscreenshots
+• بناء مشاريع كاملة (مع تحميل ZIP)
+• الدراسة والمسائل
+• محادثة صوتية
+• ترجمة
+
+سؤال؟ اسألني!`;
         addBotMessage(welcomeMsg);
-        if (voiceEnabled) speak(`Hi ${userName}! How can I help you today?`, 'en');
+        if (voiceEnabled) {
+            // Use Arabic name for Arabic greeting
+            speak(`أهلاً ${userNameArabic || userName}، كيف فيني ساعدك اليوم؟`, 'ar');
+        }
     }
 }
 
@@ -169,6 +254,7 @@ function handleEnterBtn() {
         return;
     }
     userName = name;
+    userNameArabic = nameToArabic(name);
     saveUserName(name);
     showMainApp();
 }
@@ -204,7 +290,7 @@ function setupSpeechRecognition() {
     
     rec.onerror = (event) => {
         if (event.error === 'not-allowed') {
-            showToast('Mic permission needed / لازم تسمح بالمايك', 'error');
+            showToast('Mic permission needed', 'error');
         }
         stopRecording();
     };
@@ -231,22 +317,53 @@ function loadVoices() {
 
 async function initVoices() {
     voices = await loadVoices();
+    console.log('Available voices:', voices.length);
+    const arabicVoices = voices.filter(v => v.lang.startsWith('ar'));
+    console.log('Arabic voices:', arabicVoices.map(v => v.lang + ' - ' + v.name));
 }
 
-function getVoiceFor(lang) {
+function getBestArabicVoice() {
     if (!voices || voices.length === 0) return null;
-    if (lang === 'ar' || lang === 'arabizi') {
-        return voices.find(v => v.lang.includes('ar-LB')) ||
-               voices.find(v => v.lang.includes('ar-SA')) ||
-               voices.find(v => v.lang.startsWith('ar')) ||
-               null;
+    
+    // Try Lebanese first
+    let voice = voices.find(v => v.lang === 'ar-LB');
+    if (voice) return voice;
+    
+    // Then Saudi
+    voice = voices.find(v => v.lang === 'ar-SA');
+    if (voice) return voice;
+    
+    // Then Egyptian
+    voice = voices.find(v => v.lang === 'ar-EG');
+    if (voice) return voice;
+    
+    // Any Arabic
+    voice = voices.find(v => v.lang.startsWith('ar'));
+    if (voice) return voice;
+    
+    // Try Google Arabic
+    voice = voices.find(v => v.name.toLowerCase().includes('arabic'));
+    return voice || null;
+}
+
+function getBestEnglishVoice() {
+    if (!voices || voices.length === 0) return null;
+    return voices.find(v => v.lang === 'en-US') ||
+           voices.find(v => v.lang.startsWith('en')) ||
+           null;
+}
+
+// Replace English name with Arabic version in text for better TTS
+function prepareArabicTTS(text) {
+    if (!text || !userName) return text;
+    
+    // Replace English name with Arabic version
+    if (userNameArabic && userName !== userNameArabic) {
+        const regex = new RegExp(`\\b${userName}\\b`, 'gi');
+        text = text.replace(regex, userNameArabic);
     }
-    if (lang === 'en') {
-        return voices.find(v => v.lang.includes('en-US')) ||
-               voices.find(v => v.lang.startsWith('en')) ||
-               null;
-    }
-    return null;
+    
+    return text;
 }
 
 function speak(text, lang = 'auto') {
@@ -255,7 +372,7 @@ function speak(text, lang = 'auto') {
     
     if (lang === 'auto') lang = detectLanguage(text);
     
-    // Remove code blocks from speech
+    // Remove code blocks and file markers
     let cleanText = text
         .replace(/==FILE:[\s\S]*?==END==/g, '')
         .replace(/```[\s\S]*?```/g, '')
@@ -264,24 +381,38 @@ function speak(text, lang = 'auto') {
     
     if (!cleanText) return;
     
+    // For Arabic: replace English name with Arabic version
+    if (lang === 'ar') {
+        cleanText = prepareArabicTTS(cleanText);
+    }
+    
     const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 500));
     
     if (lang === 'ar' || lang === 'arabizi') {
         utterance.lang = 'ar-LB';
-        utterance.rate = 0.95;
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        const voice = getBestArabicVoice();
+        if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+        }
     } else {
         utterance.lang = 'en-US';
         utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        const voice = getBestEnglishVoice();
+        if (voice) utterance.voice = voice;
     }
     
-    utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    
-    const voice = getVoiceFor(lang);
-    if (voice) utterance.voice = voice;
     
     utterance.onstart = () => updateStatus('Speaking...', 'thinking');
     utterance.onend = () => updateStatus('Ready');
+    utterance.onerror = (e) => {
+        console.log('TTS error:', e);
+        updateStatus('Ready');
+    };
     
     synthesis.speak(utterance);
 }
@@ -293,7 +424,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// ═══ Parse Code Files from AI Response ═══
 function parseCodeFiles(text) {
     const files = [];
     const regex = /==FILE:\s*([^=]+?)==\s*([\s\S]*?)\s*==END==/g;
@@ -302,36 +432,16 @@ function parseCodeFiles(text) {
     while ((match = regex.exec(text)) !== null) {
         const fileName = match[1].trim();
         let content = match[2].trim();
-        
-        // Remove leading code fence if present
         content = content.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
-        
         files.push({ name: fileName, content: content });
     }
     
     return files;
 }
 
-// Get programming language from filename
-function getLangFromFile(fileName) {
-    const ext = fileName.split('.').pop().toLowerCase();
-    const map = {
-        'js': 'javascript', 'jsx': 'jsx', 'ts': 'typescript',
-        'py': 'python', 'java': 'java', 'cpp': 'cpp', 'c': 'c',
-        'cs': 'csharp', 'php': 'php', 'rb': 'ruby', 'go': 'go',
-        'rs': 'rust', 'swift': 'swift', 'kt': 'kotlin',
-        'html': 'html', 'css': 'css', 'scss': 'scss',
-        'json': 'json', 'xml': 'xml', 'yaml': 'yaml', 'yml': 'yaml',
-        'md': 'markdown', 'sh': 'bash', 'sql': 'sql'
-    };
-    return map[ext] || 'text';
-}
-
-// ═══ Format Message with Files ═══
 function formatBotMessage(text) {
     const files = parseCodeFiles(text);
     
-    // If no files, format as regular text with code blocks
     if (files.length === 0) {
         let formatted = escapeHtml(text);
         formatted = formatted.replace(/```(\w+)?\n?([\s\S]*?)```/g, (m, lang, code) => {
@@ -341,23 +451,15 @@ function formatBotMessage(text) {
         return { html: formatted, files: [] };
     }
     
-    // Replace files with placeholders, keep surrounding text
-    let html = text;
-    let textParts = [];
-    
-    // Split by file markers
     const parts = text.split(/(==FILE:\s*[^=]+?==\s*[\s\S]*?\s*==END==)/g);
-    
     let resultHtml = '';
     let fileIndex = 0;
     
     for (const part of parts) {
         if (part.match(/==FILE:/)) {
-            // This is a file - leave placeholder
             resultHtml += `<!--FILE_${fileIndex}-->`;
             fileIndex++;
         } else if (part.trim()) {
-            // Regular text
             let formatted = escapeHtml(part.trim());
             formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
             resultHtml += `<div>${formatted}</div>`;
@@ -410,7 +512,6 @@ function addBotMessage(text, isError = false) {
     
     chatArea.appendChild(div);
     
-    // Insert code files
     if (files.length > 0) {
         allCodeFiles[messageId] = {};
         files.forEach((file, idx) => {
@@ -418,8 +519,7 @@ function addBotMessage(text, isError = false) {
         });
         
         const bubbleText = div.querySelector('.bubble-text');
-        const html = bubbleText.innerHTML;
-        let newHtml = html;
+        let newHtml = bubbleText.innerHTML;
         
         files.forEach((file, idx) => {
             const fileBlockHtml = createFileBlockHtml(file.name, file.content, messageId, idx);
@@ -428,7 +528,6 @@ function addBotMessage(text, isError = false) {
         
         bubbleText.innerHTML = newHtml;
         
-        // Add ZIP button if multiple files
         if (files.length > 1) {
             const zipBtnHtml = `
                 <button class="zip-download" onclick="downloadAllAsZip('${messageId}')">
@@ -439,7 +538,6 @@ function addBotMessage(text, isError = false) {
             bubbleText.innerHTML += zipBtnHtml;
         }
         
-        // Attach event listeners to copy/download buttons
         attachCodeButtonListeners(div);
     }
     
@@ -480,7 +578,7 @@ function attachCodeButtonListeners(messageDiv) {
                         btn.classList.remove('copied');
                         btn.innerHTML = '📋 Copy';
                     }, 2000);
-                    showToast('Code copied to clipboard!', 'success');
+                    showToast('Code copied!', 'success');
                 });
             }
         };
@@ -511,7 +609,6 @@ function downloadFile(fileName, content) {
     URL.revokeObjectURL(url);
 }
 
-// Make this global for inline onclick
 window.downloadAllAsZip = async function(messageId) {
     const files = allCodeFiles[messageId];
     if (!files || Object.keys(files).length === 0) return;
@@ -544,12 +641,12 @@ window.downloadAllAsZip = async function(messageId) {
         
         button.classList.remove('downloading');
         button.textContent = `📦 Download All as ZIP (${Object.keys(files).length} files)`;
-        showToast('ZIP downloaded successfully!', 'success');
+        showToast('ZIP downloaded!', 'success');
     } catch (e) {
         console.error('ZIP error:', e);
         button.classList.remove('downloading');
         button.textContent = '❌ Failed - try again';
-        showToast('ZIP download failed', 'error');
+        showToast('ZIP failed', 'error');
     }
 };
 
@@ -654,7 +751,10 @@ async function sendMessage() {
             saveConversation();
         }
         
-        speak(reply, replyLang);
+        // For Arabizi input, speak in Arabic
+        let speakLang = replyLang;
+        if (detectedLang === 'arabizi' && replyLang !== 'en') speakLang = 'ar';
+        speak(reply, speakLang);
         updateStatus('Ready');
         
         if (pendingImage) {
@@ -667,7 +767,7 @@ async function sendMessage() {
         hideTyping();
         console.error('Error:', error);
         const errorMsg = currentLang === 'ar' 
-            ? 'آسف، صار في مشكلة. حاول مرة ثانية.'
+            ? 'آسف، صار في مشكلة. جرّب مرة ثانية.'
             : 'Sorry, something went wrong. Try again.';
         addBotMessage(errorMsg, true);
         updateStatus('Error', 'error');
@@ -728,13 +828,13 @@ function toggleQuick() {
     quickToggle.classList.toggle('active');
 }
 
-// ═══ Quick Actions ═══
+// ═══ Quick Actions - Send directly ═══
 function setupQuickActions() {
     document.querySelectorAll('.quick-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const prompt = btn.dataset.prompt;
             messageInput.value = prompt;
-            messageInput.focus();
+            sendMessage(); // Send directly instead of just filling input
         });
     });
 }
@@ -764,7 +864,6 @@ quickToggle.addEventListener('click', toggleQuick);
 clearBtn.addEventListener('click', clearConversation);
 changeNameBtn.addEventListener('click', changeUserName);
 
-// PWA
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -794,6 +893,7 @@ async function init() {
         
         userName = getUserName();
         if (userName) {
+            userNameArabic = nameToArabic(userName);
             showMainApp();
             loadConversation();
         } else {
@@ -801,7 +901,7 @@ async function init() {
         }
     }, 2200);
     
-    console.log('✅ CHKEIR ROBOT Ready');
+    console.log('✅ CHKEIR ROBOT v3 Ready');
 }
 
 init();
