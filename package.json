@@ -1,0 +1,10 @@
+{
+  "name": "chkeir-robot",
+  "version": "2.0.0",
+  "description": "CHKEIR ROBOT - AI ChatBot by Mahdi Chkeir",
+  "author": "Mahdi Chkeir",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  }
+}

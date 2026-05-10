@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0e1a">
+    <meta name="description" content="CHKEIR ROBOT - Smart AI Assistant by Mahdi Chkeir">
+    <title>CHKEIR ROBOT 🤖</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="stars-bg" id="starsBg"></div>
+    
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <div class="splash-icon">🤖</div>
+                <div class="splash-rings">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+            <h1 class="splash-title">
+                <span class="char">C</span><span class="char">H</span><span class="char">K</span><span class="char">E</span><span class="char">I</span><span class="char">R</span><span class="char-space"> </span><span class="char">R</span><span class="char">O</span><span class="char">B</span><span class="char">O</span><span class="char">T</span>
+            </h1>
+            <p class="splash-subtitle">Smart AI Assistant • مساعد ذكي</p>
+            <p class="splash-creator">Created by Mahdi Chkeir 🇱🇧</p>
+            <div class="splash-loader">
+                <div class="splash-bar"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Welcome Screen -->
+    <div class="welcome-screen" id="welcomeScreen" style="display: none;">
+        <div class="welcome-container">
+            <div class="welcome-logo">
+                <span class="welcome-icon">🤖</span>
+                <h1 class="welcome-title">CHKEIR ROBOT</h1>
+                <p class="welcome-subtitle">Smart AI Assistant</p>
+            </div>
+            
+            <div class="welcome-form">
+                <h2 class="welcome-greeting">Welcome! أهلاً!</h2>
+                <p class="welcome-text">What's your name? / شو اسمك؟</p>
+                
+                <input type="text" id="userNameInput" placeholder="Your name / اسمك / esmak..." maxlength="30" autocomplete="off"/>
+                
+                <button class="welcome-btn" id="enterBtn">
+                    <span>Enter / دخول</span>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                        <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                </button>
+                
+                <div class="welcome-features">
+                    <div class="feature"><span class="feature-icon">💬</span><span>Chat</span></div>
+                    <div class="feature"><span class="feature-icon">🎙️</span><span>Voice</span></div>
+                    <div class="feature"><span class="feature-icon">📷</span><span>Images</span></div>
+                    <div class="feature"><span class="feature-icon">💻</span><span>Code+ZIP</span></div>
+                    <div class="feature"><span class="feature-icon">🎓</span><span>Study</span></div>
+                    <div class="feature"><span class="feature-icon">🌍</span><span>3 Langs</span></div>
+                </div>
+                
+                <p class="welcome-hint">Made with ❤️ by Mahdi Chkeir 🇱🇧</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App -->
+    <div class="app" id="mainApp" style="display: none;">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <div class="logo-text">
+                    <h1>CHKEIR ROBOT</h1>
+                    <span class="subtitle" id="userGreeting">Welcome</span>
+                </div>
+            </div>
+            <div class="status">
+                <span class="lang-badge" id="langBadge">🌐 AUTO</span>
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Ready</span>
+            </div>
+        </header>
+        
+        <div class="quick-actions" id="quickActions">
+            <button class="quick-btn" data-prompt="Tell me a joke / احكيلي نكتة"><span>😄</span><span>Joke</span></button>
+            <button class="quick-btn" data-prompt="Help me build a complete web app project / ساعدني ببناء مشروع تطبيق ويب كامل"><span>💻</span><span>Build App</span></button>
+            <button class="quick-btn" data-prompt="Explain a concept to me / اشرحلي مفهوم"><span>📚</span><span>Explain</span></button>
+            <button class="quick-btn" data-prompt="Help me solve a math problem step by step / ساعدني بحل مسألة رياضيات خطوة بخطوة"><span>🧮</span><span>Math</span></button>
+            <button class="quick-btn" data-prompt="Translate something for me / ترجم لي"><span>🌍</span><span>Translate</span></button>
+            <button class="quick-btn" data-prompt="Help me write a professional email / ساعدني بكتابة إيميل احترافي"><span>✉️</span><span>Email</span></button>
+            <button class="quick-btn" data-prompt="Create a study plan / اعمل خطة دراسية"><span>🎓</span><span>Study Plan</span></button>
+            <button class="quick-btn" data-prompt="Give me a creative project idea / اعطيني فكرة مشروع إبداعية"><span>💡</span><span>Idea</span></button>
+        </div>
+        
+        <main class="chat-area" id="chatArea"></main>
+        
+        <div class="image-preview" id="imagePreview" style="display: none;">
+            <img id="previewImg" alt="Preview">
+            <span class="preview-text">Image ready</span>
+            <button class="remove-img" id="removeImg">×</button>
+        </div>
+        
+        <footer class="input-area">
+            <div class="input-container">
+                <button class="img-btn" id="imgBtn" title="Upload Image">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-5 6l2.5 3.01L14 12l4 5H6l3-4z"/>
+                    </svg>
+                </button>
+                
+                <button class="mic-btn" id="micBtn" title="Voice Input">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                        <path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 0 0 0 2h8a1 1 0 0 0 0-2h-3v-2.08A7 7 0 0 0 19 11z"/>
+                    </svg>
+                </button>
+                
+                <input type="text" id="messageInput" placeholder="Type / اكتب / okteb..." autocomplete="off"/>
+                
+                <button class="send-btn" id="sendBtn" title="Send">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
+                    </svg>
+                </button>
+                
+                <input type="file" id="imageInput" accept="image/*" style="display:none;">
+            </div>
+            
+            <div class="actions">
+                <button class="action-btn active" id="voiceToggle"><span id="voiceIcon">🔊</span><span>Voice</span></button>
+                <button class="action-btn active" id="quickToggle"><span>⚡</span><span>Quick</span></button>
+                <button class="action-btn" id="clearBtn"><span>🗑️</span><span>Clear</span></button>
+                <button class="action-btn" id="changeNameBtn"><span>👤</span><span>Name</span></button>
+                <button class="action-btn" id="installBtn" style="display:none;"><span>📱</span><span>Install</span></button>
+            </div>
+        </footer>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

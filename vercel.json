@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "name": "chkeir-robot",
+  "functions": {
+    "api/chat.js": { "maxDuration": 30 },
+    "api/vision.js": { "maxDuration": 30 }
+  }
+}
