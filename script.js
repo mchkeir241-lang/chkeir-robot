@@ -1,9 +1,23 @@
+let isRequestRunning = false;
+let lastMessageTime = 0;
+
 // ═══════════════════════════════════════════════
 // 🤖 CHKEIR ROBOT - v3 (Enhanced Arabic Support)
 // Created by Mahdi Chkeir 🇱🇧
 // ═══════════════════════════════════════════════
 
 const splashScreen = document.getElementById('splashScreen');
+
+        if (response.ok) break;
+
+    } catch (err) {
+        console.log("Retrying...");
+    }
+
+    retryCount++;
+    await new Promise(r => setTimeout(r, 2000));
+}
+
 const welcomeScreen = document.getElementById('welcomeScreen');
 const userNameInput = document.getElementById('userNameInput');
 const enterBtn = document.getElementById('enterBtn');
@@ -697,6 +711,23 @@ removeImg.addEventListener('click', () => {
 
 // ═══ Send Message ═══
 async function sendMessage() {
+
+    // Prevent multiple requests together
+    if (isRequestRunning) {
+        console.log("Request already running");
+        return;
+    }
+
+    // Small cooldown
+    const now = Date.now();
+    if (now - lastMessageTime < 2000) {
+        console.log("Cooldown active");
+        return;
+    }
+
+    lastMessageTime = now;
+    isRequestRunning = true;
+
     const text = messageInput.value.trim();
     if ((!text && !pendingImage) || isProcessing) return;
     
@@ -729,7 +760,12 @@ async function sendMessage() {
             conversationHistory.push({ role: 'user', content: text });
         }
         
-        const response = await fetch(endpoint, {
+        let retryCount = 0;
+let response;
+
+while (retryCount < 3) {
+    try {
+        response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
