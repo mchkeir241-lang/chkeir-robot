@@ -45,6 +45,12 @@ export default async function handler(req, res) {
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages required' });
     }
+
+    // Prevent long conversation crashes / token overflow
+    const limitedMessages = messages.slice(-12).map(msg => ({
+        role: msg.role,
+        content: String(msg.content || '').slice(0, 4000)
+    }));
     
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
@@ -72,7 +78,11 @@ export default async function handler(req, res) {
 
 ═══ قواعد صارمة جداً ═══
 
-1. اللغة: العربية الفصحى المهذبة فقط
+1. اللغة:
+   - إذا كانت رسالة المستخدم بالعربية أو Arabizi يجب أن يكون الرد عربياً 100%
+   - ممنوع أي كلمات إنجليزية إلا للمصطلحات التقنية الضرورية جداً
+   - إذا كتب المستخدم بالإنجليزية فقط، عندها فقط رد بالإنجليزية
+   - لا تغيّر اللغة أثناء المحادثة
    ✅ "وعليكم السلام ورحمة الله وبركاته"
    ✅ "حضرتك" "تفضل" "بكل سرور"
    ❌ لا تخلط مع الإنجليزية
@@ -240,7 +250,7 @@ Be helpful, concise, polite.`;
                 model: 'llama-3.3-70b-versatile',
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
-                    ...messages
+                    ...limitedMessages
                 ],
                 max_tokens: 2500,
                 temperature: 0.5,
@@ -273,10 +283,19 @@ Be helpful, concise, polite.`;
             .trim();
         
         // Post-process Arabic responses
-        if (useArabic && englishName !== arabicName) {
+        if (useArabic) {
+
             // Replace English name with Arabic if AI used it
-            const regex = new RegExp(`\\b${englishName}\\b`, 'gi');
-            reply = reply.replace(regex, arabicName);
+            if (englishName !== arabicName) {
+                const regex = new RegExp(`\\b${englishName}\\b`, 'gi');
+                reply = reply.replace(regex, arabicName);
+            }
+
+            // Remove random English words in Arabic mode
+            reply = reply.replace(/\b(Okay|ok|Hello|Hi|Thanks|Thank you|Sorry)\b/gi, '');
+
+            // Force Arabic punctuation style
+            reply = reply.replace(/\?/g, '؟');
         }
         
         return res.status(200).json({ reply: reply });
