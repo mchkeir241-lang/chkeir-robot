@@ -786,13 +786,13 @@ async function sendMessage() {
 // ═══ Save/Load ═══
 function saveConversation() {
     try {
-        localStorage.setItem('chkeir_history_' + userName, JSON.stringify(conversationHistory.slice(-20)));
+        localStorage.setItem('chkeir_history_' + sessionId, JSON.stringify(conversationHistory.slice(-20)));
     } catch (e) {}
 }
 
 function loadConversation() {
     try {
-        const saved = localStorage.getItem('chkeir_history_' + userName);
+        const saved = localStorage.getItem('chkeir_history_' + sessionId);
         if (saved) {
             const history = JSON.parse(saved);
             const recent = history.slice(-6);
@@ -810,7 +810,7 @@ function clearAll() {
     conversationHistory = [];
     chatArea.innerHTML = '';
     allCodeFiles = {};
-    if (userName) localStorage.removeItem('chkeir_history_' + userName);
+    localStorage.removeItem('chkeir_history_' + sessionId);
 }
 
 function clearConversation() {
