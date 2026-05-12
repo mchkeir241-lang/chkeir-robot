@@ -44,9 +44,6 @@ let pendingImage = null;
 let codeFilesCounter = 0;
 let allCodeFiles = {};
 
-let requestCooldown = false;
-
-
 // ═══ Convert name to Arabic for TTS ═══
 // Common Arabizi → Arabic mappings
 function nameToArabic(name) {
@@ -732,23 +729,11 @@ async function sendMessage() {
             conversationHistory.push({ role: 'user', content: text });
         }
         
-        let response;
-
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                if (response.ok) break;
-            } catch (e) {
-                console.log('Retry:', attempt + 1);
-            }
-
-            await new Promise(r => setTimeout(r, 1500));
-        }
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
         
         hideTyping();
         

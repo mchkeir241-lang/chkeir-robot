@@ -41,12 +41,6 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     
     const { messages, userName, userLang } = req.body;
-
-    // Prevent token overflow from very long chats
-    const limitedMessages = (messages || []).slice(-8).map(msg => ({
-        role: msg.role,
-        content: String(msg.content || '').slice(0, 2000)
-    }));
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages required' });
@@ -61,7 +55,7 @@ export default async function handler(req, res) {
     const arabicName = nameToArabic(englishName);
     
     // Detect language
-    const lastUserMsg = limitedMessages.filter(m => m.role === 'user').pop()?.content || '';
+    const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
     const arabicChars = (lastUserMsg.match(/[\u0600-\u06FF]/g) || []).length;
     const totalChars = lastUserMsg.replace(/\s/g, '').length;
     const isArabicInput = totalChars > 0 && (arabicChars / totalChars) > 0.3;
@@ -244,7 +238,7 @@ Be helpful, concise, polite.`;
             },
             body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
-                messages: limitedMessages, [
+                messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
                     ...messages
                 ],
