@@ -26,7 +26,7 @@
             <h1 class="splash-title">
                 <span class="char">C</span><span class="char">H</span><span class="char">K</span><span class="char">E</span><span class="char">I</span><span class="char">R</span><span class="char-space"> </span><span class="char">R</span><span class="char">O</span><span class="char">B</span><span class="char">O</span><span class="char">T</span>
             </h1>
-            <p class="splash-subtitle">Smart AI Assistant • مساعد ذكي</p>
+            <p class="splash-subtitle">مساعد ذكي • Smart AI Assistant</p>
             <p class="splash-creator">Created by Mahdi Chkeir 🇱🇧</p>
             <div class="splash-loader">
                 <div class="splash-bar"></div>
@@ -40,29 +40,29 @@
             <div class="welcome-logo">
                 <span class="welcome-icon">🤖</span>
                 <h1 class="welcome-title">CHKEIR ROBOT</h1>
-                <p class="welcome-subtitle">Smart AI Assistant</p>
+                <p class="welcome-subtitle">مساعد ذكي • Smart AI Assistant</p>
             </div>
             
             <div class="welcome-form">
-                <h2 class="welcome-greeting">Welcome! أهلاً!</h2>
-                <p class="welcome-text">What's your name? / شو اسمك؟</p>
+                <h2 class="welcome-greeting">أهلاً! Welcome!</h2>
+                <p class="welcome-text">ما اسمك؟ / What's your name?</p>
                 
-                <input type="text" id="userNameInput" placeholder="Your name / اسمك / esmak..." maxlength="30" autocomplete="off"/>
+                <input type="text" id="userNameInput" placeholder="اسمك / Your name..." maxlength="30" autocomplete="off"/>
                 
                 <button class="welcome-btn" id="enterBtn">
-                    <span>Enter / دخول</span>
+                    <span>دخول / Enter</span>
                     <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                         <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke="currentColor" stroke-width="2" fill="none"/>
                     </svg>
                 </button>
                 
                 <div class="welcome-features">
-                    <div class="feature"><span class="feature-icon">💬</span><span>Chat</span></div>
-                    <div class="feature"><span class="feature-icon">🎙️</span><span>Voice</span></div>
-                    <div class="feature"><span class="feature-icon">📷</span><span>Images</span></div>
-                    <div class="feature"><span class="feature-icon">💻</span><span>Code+ZIP</span></div>
-                    <div class="feature"><span class="feature-icon">🎓</span><span>Study</span></div>
-                    <div class="feature"><span class="feature-icon">🌍</span><span>3 Langs</span></div>
+                    <div class="feature"><span class="feature-icon">💬</span><span>محادثة</span></div>
+                    <div class="feature"><span class="feature-icon">🎙️</span><span>صوت</span></div>
+                    <div class="feature"><span class="feature-icon">📷</span><span>صور</span></div>
+                    <div class="feature"><span class="feature-icon">💻</span><span>أكواد</span></div>
+                    <div class="feature"><span class="feature-icon">🎓</span><span>دراسة</span></div>
+                    <div class="feature"><span class="feature-icon">🌍</span><span>لغات</span></div>
                 </div>
                 
                 <p class="welcome-hint">Made with ❤️ by Mahdi Chkeir 🇱🇧</p>
@@ -81,49 +81,256 @@
                 </div>
             </div>
             <div class="status">
+                <button class="menu-btn" id="menuBtn" title="القائمة">☰</button>
+                <button class="theme-toggle" id="themeToggle" title="تبديل الثيم">🌙</button>
                 <span class="lang-badge" id="langBadge">🌐 AUTO</span>
                 <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Ready</span>
+                <span id="statusText">جاهز</span>
             </div>
         </header>
         
+        <!-- Menu Modal -->
+        <div class="modal-overlay" id="menuModal" style="display:none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2 id="modalTitle">القائمة</h2>
+                    <button class="modal-close" id="modalClose">×</button>
+                </div>
+                
+                <div class="modal-tabs">
+                    <button class="modal-tab active" data-tab="about">عن المشروع</button>
+                    <button class="modal-tab" data-tab="howto">كيف أستخدم</button>
+                    <button class="modal-tab" data-tab="feedback">اقتراحاتك</button>
+                    <button class="modal-tab" data-tab="contact">تواصل</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- About Tab -->
+                    <div class="modal-content active" data-content="about">
+                        <div class="about-hero">
+                            <div class="about-logo">🤖</div>
+                            <h3>CHKEIR ROBOT</h3>
+                            <p class="about-subtitle">مساعد ذكي صنعه شاب لبناني 🇱🇧</p>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h4>✨ شو يقدر يعمل؟</h4>
+                            <ul class="about-list">
+                                <li>💬 يحكي معك بالعربية الفصحى</li>
+                                <li>📚 يجاوب أسئلتك الدينية (من المنظور الشيعي)</li>
+                                <li>💻 يساعدك بالبرمجة وبناء التطبيقات</li>
+                                <li>🎓 يحلّ مسائل الدراسة</li>
+                                <li>🌍 يترجم لكل اللغات</li>
+                                <li>✉️ يكتبلك إيميلات ومقالات</li>
+                                <li>🎙️ يحكي وتسمعو</li>
+                                <li>📷 يحلّل الصور</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h4>👨‍💻 عن الصانع</h4>
+                            <p>اسمي <strong>مهدي شقير</strong>، شاب لبناني صنعت هذا المساعد الذكي ليكون متاحاً للجميع مجاناً.</p>
+                            <p>الهدف: مساعدة المجتمع العربي بأداة ذكية مهذبة ومحترمة.</p>
+                        </div>
+                        
+                        <div class="about-section">
+                            <h4>🆓 100% مجاني</h4>
+                            <ul class="about-list">
+                                <li>✅ بدون تسجيل دخول</li>
+                                <li>✅ بدون إعلانات</li>
+                                <li>✅ بدون اشتراكات</li>
+                                <li>✅ مفتوح للجميع</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="about-tech">
+                            <span class="tech-badge">⚡ Llama 3.3</span>
+                            <span class="tech-badge">🔗 Vercel</span>
+                            <span class="tech-badge">🚀 Groq</span>
+                        </div>
+                    </div>
+                    
+                    <!-- How To Tab -->
+                    <div class="modal-content" data-content="howto">
+                        <div class="howto-section">
+                            <div class="howto-step">
+                                <span class="step-num">1</span>
+                                <div>
+                                    <h4>اكتب أو تكلّم</h4>
+                                    <p>اكتب رسالتك بصندوق الكتابة أو اضغط 🎙️ للتحدث صوتياً</p>
+                                </div>
+                            </div>
+                            
+                            <div class="howto-step">
+                                <span class="step-num">2</span>
+                                <div>
+                                    <h4>استخدم الأزرار السريعة</h4>
+                                    <p>اضغط أي زر فوق (نكتة، رياضيات، ترجمة...) للبدء بسرعة</p>
+                                </div>
+                            </div>
+                            
+                            <div class="howto-step">
+                                <span class="step-num">3</span>
+                                <div>
+                                    <h4>ارفع صورة</h4>
+                                    <p>اضغط 📷 لرفع صورة وسؤال المساعد عنها (واجب، كود، مسألة...)</p>
+                                </div>
+                            </div>
+                            
+                            <div class="howto-step">
+                                <span class="step-num">4</span>
+                                <div>
+                                    <h4>اطلب مشاريع كاملة</h4>
+                                    <p>اكتب "ابنيلي تطبيق todo" → يبنيلك ملفات كاملة مع زر ZIP</p>
+                                </div>
+                            </div>
+                            
+                            <div class="howto-step">
+                                <span class="step-num">5</span>
+                                <div>
+                                    <h4>أمثلة سريعة</h4>
+                                    <div class="examples">
+                                        <span class="example">"اشرحلي الفيزياء الكمية"</span>
+                                        <span class="example">"اكتبلي قصة قصيرة"</span>
+                                        <span class="example">"من هو الإمام الحسين؟"</span>
+                                        <span class="example">"ترجم: I love coding"</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="howto-tip">
+                                <strong>💡 نصيحة:</strong> استنى الرد يكتمل قبل ما تكتب رسالة جديدة
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Feedback Tab -->
+                    <div class="modal-content" data-content="feedback">
+                        <div class="feedback-section">
+                            <h4>💭 رأيك يهمنا!</h4>
+                            <p>ساعدنا نطوّر CHKEIR ROBOT</p>
+                            
+                            <div class="rating-container">
+                                <p>كيف تقيّم تجربتك؟</p>
+                                <div class="stars">
+                                    <span class="star" data-rating="1">⭐</span>
+                                    <span class="star" data-rating="2">⭐</span>
+                                    <span class="star" data-rating="3">⭐</span>
+                                    <span class="star" data-rating="4">⭐</span>
+                                    <span class="star" data-rating="5">⭐</span>
+                                </div>
+                                <p class="rating-text" id="ratingText">اضغط على نجمة</p>
+                            </div>
+                            
+                            <textarea id="feedbackText" placeholder="اكتب اقتراحك أو ملاحظتك هنا..." rows="4"></textarea>
+                            
+                            <button class="modal-btn" id="sendFeedbackBtn">
+                                📤 إرسال
+                            </button>
+                            
+                            <div class="feedback-note">
+                                💌 سيتم نسخ رسالتك ويمكنك إرسالها للصانع
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Contact Tab -->
+                    <div class="modal-content" data-content="contact">
+                        <div class="contact-section">
+                            <h4>📬 تواصل مع الصانع</h4>
+                            <p>مهدي شقير - صانع CHKEIR ROBOT</p>
+                            
+                            <div class="contact-cards">
+                                <button class="contact-card" data-action="whatsapp">
+                                    <span class="contact-icon">💬</span>
+                                    <div class="contact-info">
+                                        <strong>WhatsApp</strong>
+                                        <span>راسلني مباشرة</span>
+                                    </div>
+                                </button>
+                                
+                                <button class="contact-card" data-action="share">
+                                    <span class="contact-icon">📤</span>
+                                    <div class="contact-info">
+                                        <strong>شارك الموقع</strong>
+                                        <span>أرسله لرفقاتك</span>
+                                    </div>
+                                </button>
+                                
+                                <button class="contact-card" data-action="copy">
+                                    <span class="contact-icon">📋</span>
+                                    <div class="contact-info">
+                                        <strong>انسخ الرابط</strong>
+                                        <span>chkeir-robot.vercel.app</span>
+                                    </div>
+                                </button>
+                                
+                                <button class="contact-card" data-action="install">
+                                    <span class="contact-icon">📱</span>
+                                    <div class="contact-info">
+                                        <strong>ثبّت كتطبيق</strong>
+                                        <span>على الجوال أو الكمبيوتر</span>
+                                    </div>
+                                </button>
+                            </div>
+                            
+                            <div class="contact-share">
+                                <h5>🌐 شارك الموقع على:</h5>
+                                <div class="share-buttons">
+                                    <button class="share-btn-modal" data-platform="whatsapp">💬 واتساب</button>
+                                    <button class="share-btn-modal" data-platform="telegram">✈️ تلغرام</button>
+                                    <button class="share-btn-modal" data-platform="facebook">📘 فيسبوك</button>
+                                    <button class="share-btn-modal" data-platform="twitter">🐦 تويتر</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <p>صنع بكل ❤️ من مهدي شقير 🇱🇧</p>
+                    <p class="version">CHKEIR ROBOT v6 • 2026</p>
+                </div>
+            </div>
+        </div>
+        
         <div class="quick-actions" id="quickActions">
-            <button class="quick-btn" data-prompt="Tell me a joke / احكيلي نكتة"><span>😄</span><span>Joke</span></button>
-            <button class="quick-btn" data-prompt="Help me build a complete web app project / ساعدني ببناء مشروع تطبيق ويب كامل"><span>💻</span><span>Build App</span></button>
-            <button class="quick-btn" data-prompt="Explain a concept to me / اشرحلي مفهوم"><span>📚</span><span>Explain</span></button>
-            <button class="quick-btn" data-prompt="Help me solve a math problem step by step / ساعدني بحل مسألة رياضيات خطوة بخطوة"><span>🧮</span><span>Math</span></button>
-            <button class="quick-btn" data-prompt="Translate something for me / ترجم لي"><span>🌍</span><span>Translate</span></button>
-            <button class="quick-btn" data-prompt="Help me write a professional email / ساعدني بكتابة إيميل احترافي"><span>✉️</span><span>Email</span></button>
-            <button class="quick-btn" data-prompt="Create a study plan / اعمل خطة دراسية"><span>🎓</span><span>Study Plan</span></button>
-            <button class="quick-btn" data-prompt="Give me a creative project idea / اعطيني فكرة مشروع إبداعية"><span>💡</span><span>Idea</span></button>
+            <button class="quick-btn" data-prompt="احكيلي نكتة"><span>😄</span><span>نكتة</span></button>
+            <button class="quick-btn" data-prompt="ساعدني ببناء مشروع تطبيق ويب"><span>💻</span><span>تطبيق</span></button>
+            <button class="quick-btn" data-prompt="اشرحلي مفهوم"><span>📚</span><span>شرح</span></button>
+            <button class="quick-btn" data-prompt="ساعدني بمسألة رياضيات"><span>🧮</span><span>رياضيات</span></button>
+            <button class="quick-btn" data-prompt="ترجم لي"><span>🌍</span><span>ترجمة</span></button>
+            <button class="quick-btn" data-prompt="ساعدني بإيميل"><span>✉️</span><span>إيميل</span></button>
+            <button class="quick-btn" data-prompt="اعمل خطة دراسية"><span>🎓</span><span>دراسة</span></button>
+            <button class="quick-btn" data-prompt="اعطيني فكرة"><span>💡</span><span>فكرة</span></button>
         </div>
         
         <main class="chat-area" id="chatArea"></main>
         
         <div class="image-preview" id="imagePreview" style="display: none;">
             <img id="previewImg" alt="Preview">
-            <span class="preview-text">Image ready</span>
+            <span class="preview-text">صورة جاهزة</span>
             <button class="remove-img" id="removeImg">×</button>
         </div>
         
         <footer class="input-area">
             <div class="input-container">
-                <button class="img-btn" id="imgBtn" title="Upload Image">
+                <button class="img-btn" id="imgBtn" title="رفع صورة">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-5 6l2.5 3.01L14 12l4 5H6l3-4z"/>
                     </svg>
                 </button>
                 
-                <button class="mic-btn" id="micBtn" title="Voice Input">
+                <button class="mic-btn" id="micBtn" title="صوت">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
                         <path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 0 0 0 2h8a1 1 0 0 0 0-2h-3v-2.08A7 7 0 0 0 19 11z"/>
                     </svg>
                 </button>
                 
-                <input type="text" id="messageInput" placeholder="Type / اكتب / okteb..." autocomplete="off"/>
+                <input type="text" id="messageInput" placeholder="اكتب رسالة... / Type a message..." autocomplete="off"/>
                 
-                <button class="send-btn" id="sendBtn" title="Send">
+                <button class="send-btn" id="sendBtn" title="إرسال">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/>
                     </svg>
@@ -133,11 +340,12 @@
             </div>
             
             <div class="actions">
-                <button class="action-btn active" id="voiceToggle"><span id="voiceIcon">🔊</span><span>Voice</span></button>
-                <button class="action-btn active" id="quickToggle"><span>⚡</span><span>Quick</span></button>
-                <button class="action-btn" id="clearBtn"><span>🗑️</span><span>Clear</span></button>
-                <button class="action-btn" id="changeNameBtn"><span>👤</span><span>Name</span></button>
-                <button class="action-btn" id="installBtn" style="display:none;"><span>📱</span><span>Install</span></button>
+                <button class="action-btn active" id="voiceToggle"><span id="voiceIcon">🔊</span><span>صوت</span></button>
+                <button class="action-btn active" id="quickToggle"><span>⚡</span><span>سريع</span></button>
+                <button class="action-btn" id="clearBtn"><span>🗑️</span><span>مسح</span></button>
+                <button class="action-btn" id="changeNameBtn"><span>👤</span><span>اسم</span></button>
+                <button class="action-btn" id="shareBtn"><span>📤</span><span>مشاركة</span></button>
+                <button class="action-btn" id="installBtn" style="display:none;"><span>📱</span><span>تثبيت</span></button>
             </div>
         </footer>
     </div>

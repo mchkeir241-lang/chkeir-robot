@@ -1,14 +1,8 @@
 {
   "name": "chkeir-robot",
-  "version": "2.0.0",
-  "description": "CHKEIR ROBOT - AI ChatBot by Mahdi Chkeir",
+  "version": "6.0.0",
+  "description": "CHKEIR ROBOT - Smart AI Assistant by Mahdi Chkeir",
+  "private": true,
   "author": "Mahdi Chkeir",
-  "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel"
-  },
-  "type": "module",
-  "engines": {
-    "node": "20.x"
-  }
+  "license": "MIT"
 }

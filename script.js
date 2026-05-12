@@ -1,20 +1,56 @@
+// CHKEIR ROBOT v6 - Level 2 Upgrades
+const API_URL = '/api/chat';
+const VISION_URL = '/api/vision';
 
-// Session isolation
-let sessionId = localStorage.getItem('chkeir_session');
-if (!sessionId) {
-  sessionId = crypto.randomUUID();
-  localStorage.setItem('chkeir_session', sessionId);
+let userName = localStorage.getItem('chkeir_username') || '';
+let conversationHistory = [];
+let voiceEnabled = localStorage.getItem('voice_enabled') !== 'false';
+let quickActionsVisible = localStorage.getItem('quick_visible') !== 'false';
+let currentTheme = localStorage.getItem('theme') || 'dark';
+let currentLanguage = 'auto';
+let isRecording = false;
+let recognition = null;
+let selectedImage = null;
+let deferredPrompt = null;
+
+// Apply theme
+document.documentElement.setAttribute('data-theme', currentTheme);
+
+// English to Arabic name map
+const nameToArabicMap = {
+    'mahdi': 'مهدي', 'mehdi': 'مهدي', 'mahdy': 'مهدي',
+    'ahmad': 'أحمد', 'ahmed': 'أحمد',
+    'mohamad': 'محمد', 'mohammed': 'محمد', 'mohammad': 'محمد', 'mohamed': 'محمد',
+    'ali': 'علي', 'hussein': 'حسين', 'hassan': 'حسن',
+    'omar': 'عمر', 'khaled': 'خالد', 'karim': 'كريم',
+    'sami': 'سامي', 'samir': 'سمير', 'tarek': 'طارق', 'rami': 'رامي',
+    'youssef': 'يوسف', 'yousef': 'يوسف', 'ibrahim': 'إبراهيم',
+    'jamal': 'جمال', 'kamal': 'كمال', 'walid': 'وليد',
+    'ziad': 'زياد', 'fadi': 'فادي', 'bilal': 'بلال',
+    'abbas': 'عباس', 'jaafar': 'جعفر', 'mostafa': 'مصطفى',
+    'kassem': 'قاسم', 'qasem': 'قاسم',
+    'nadia': 'نادية', 'sara': 'سارة', 'sarah': 'سارة',
+    'leila': 'ليلى', 'layla': 'ليلى', 'maya': 'مايا',
+    'rana': 'رنا', 'lara': 'لارا', 'nour': 'نور', 'noor': 'نور',
+    'yasmin': 'ياسمين', 'fatima': 'فاطمة', 'fatma': 'فاطمة',
+    'zeinab': 'زينب', 'zeina': 'زينة', 'reem': 'ريم',
+    'lina': 'لينا', 'dana': 'دانا', 'tala': 'تالا',
+    'hala': 'هالة', 'rola': 'رولا', 'rasha': 'رشا',
+    'mariam': 'مريم', 'maryam': 'مريم'
+};
+
+function nameToArabic(name) {
+    if (!name) return 'صديقي';
+    if (/[\u0600-\u06FF]/.test(name)) return name;
+    return nameToArabicMap[name.toLowerCase().trim()] || name;
 }
-// ═══════════════════════════════════════════════
-// 🤖 CHKEIR ROBOT - v3 (Enhanced Arabic Support)
-// Created by Mahdi Chkeir 🇱🇧
-// ═══════════════════════════════════════════════
 
+// DOM Elements
 const splashScreen = document.getElementById('splashScreen');
 const welcomeScreen = document.getElementById('welcomeScreen');
+const mainApp = document.getElementById('mainApp');
 const userNameInput = document.getElementById('userNameInput');
 const enterBtn = document.getElementById('enterBtn');
-const mainApp = document.getElementById('mainApp');
 const userGreeting = document.getElementById('userGreeting');
 const chatArea = document.getElementById('chatArea');
 const messageInput = document.getElementById('messageInput');
@@ -31,847 +67,672 @@ const quickToggle = document.getElementById('quickToggle');
 const quickActions = document.getElementById('quickActions');
 const clearBtn = document.getElementById('clearBtn');
 const changeNameBtn = document.getElementById('changeNameBtn');
+const shareBtn = document.getElementById('shareBtn');
 const installBtn = document.getElementById('installBtn');
+const themeToggle = document.getElementById('themeToggle');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
 const langBadge = document.getElementById('langBadge');
 const toast = document.getElementById('toast');
 
-let userName = '';
-let userNameArabic = ''; // Arabic version for TTS
-let conversationHistory = [];
-let isProcessing = false;
-let voiceEnabled = true;
-let recognition = null;
-let isRecording = false;
-let synthesis = window.speechSynthesis;
-let voices = [];
-let currentLang = 'auto';
-let pendingImage = null;
-let codeFilesCounter = 0;
-let allCodeFiles = {};
+// Initialize theme button
+themeToggle.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
 
-// ═══ Convert name to Arabic for TTS ═══
-// Common Arabizi → Arabic mappings
-function nameToArabic(name) {
-    if (!name) return '';
-    
-    // If already Arabic, return as is
-    if (/[\u0600-\u06FF]/.test(name)) return name;
-    
-    const lower = name.toLowerCase().trim();
-    
-    // Common Lebanese/Arabic names
-    const nameMap = {
-        'mahdi': 'مَهْدي',
-        'mehdi': 'مَهْدي',
-        'mahdy': 'مَهْدي',
-        'ahmad': 'أَحْمَد',
-        'ahmed': 'أَحْمَد',
-        'mohamad': 'مُحَمَّد',
-        'mohammed': 'مُحَمَّد',
-        'mohammad': 'مُحَمَّد',
-        'mohamed': 'مُحَمَّد',
-        'ali': 'عَلي',
-        'hussein': 'حُسَين',
-        'hassan': 'حَسَن',
-        'omar': 'عُمَر',
-        'khaled': 'خالِد',
-        'karim': 'كَريم',
-        'sami': 'سامي',
-        'samir': 'سَمير',
-        'tarek': 'طارِق',
-        'rami': 'رامي',
-        'nadia': 'ناديا',
-        'sara': 'سارا',
-        'sarah': 'سارا',
-        'leila': 'لَيْلى',
-        'layla': 'لَيْلى',
-        'maya': 'مايا',
-        'rana': 'رانا',
-        'lara': 'لارا',
-        'nour': 'نور',
-        'noor': 'نور',
-        'yasmin': 'ياسمين',
-        'fatima': 'فاطِما',
-        'fatma': 'فاطِما',
-        'zeinab': 'زَيْنَب',
-        'zeina': 'زينا',
-        'reem': 'ريم',
-        'lina': 'لينا',
-        'dana': 'دانا',
-        'tala': 'تالا'
-    };
-    
-    if (nameMap[lower]) return nameMap[lower];
-    
-    // Try to phonetically convert
-    return phoneticArabic(lower);
-}
-
-function phoneticArabic(name) {
-    // Basic phonetic mapping for unknown names
-    const map = {
-        'sh': 'ش', 'ch': 'ش', 'th': 'ث', 'ph': 'ف', 'kh': 'خ', 'gh': 'غ',
-        'a': 'ا', 'b': 'ب', 'c': 'ك', 'd': 'د', 'e': 'ي', 'f': 'ف',
-        'g': 'ج', 'h': 'ه', 'i': 'ي', 'j': 'ج', 'k': 'ك', 'l': 'ل',
-        'm': 'م', 'n': 'ن', 'o': 'و', 'p': 'ب', 'q': 'ق', 'r': 'ر',
-        's': 'س', 't': 'ت', 'u': 'و', 'v': 'ف', 'w': 'و', 'x': 'كس',
-        'y': 'ي', 'z': 'ز'
-    };
-    
-    let result = '';
-    let i = 0;
-    while (i < name.length) {
-        const two = name.substring(i, i + 2);
-        if (map[two]) {
-            result += map[two];
-            i += 2;
-        } else {
-            const one = name[i];
-            result += map[one] || one;
-            i++;
-        }
-    }
-    return result;
-}
-
-// ═══ Toast ═══
-function showToast(message, type = 'normal', duration = 3000) {
-    toast.textContent = message;
-    toast.className = 'toast show ' + type;
-    setTimeout(() => toast.classList.remove('show'), duration);
-}
-
-// ═══ Splash ═══
-function hideSplash() {
+// Splash → Welcome/Main
+setTimeout(() => {
+    splashScreen.classList.add('hide');
     setTimeout(() => {
-        splashScreen.classList.add('hide');
-        setTimeout(() => { splashScreen.style.display = 'none'; }, 600);
-    }, 2200);
-}
-
-// ═══ Particles ═══
-function createParticles() {
-    const bg = document.getElementById('starsBg');
-    setInterval(() => {
-        if (document.querySelectorAll('.particle').length > 8) return;
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.style.left = Math.random() * 100 + '%';
-        p.style.animationDuration = (15 + Math.random() * 15) + 's';
-        bg.appendChild(p);
-        setTimeout(() => p.remove(), 30000);
-    }, 3000);
-}
-
-// ═══ Language Detection ═══
-function detectLanguage(text) {
-    if (!text) return 'auto';
-    const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
-    const totalChars = text.replace(/\s/g, '').length;
-    if (totalChars === 0) return 'auto';
-    
-    const arabicRatio = arabicChars / totalChars;
-    if (arabicRatio > 0.3) return 'ar';
-    
-    const arabiziPatterns = [
-        /\b(kifak|kifik|kifkon|shu|sho|3am|3al|7akili|7eki|7elo|7abibi|3atik|3afye)\b/i,
-        /\b(yalla|khalas|tamem|hala2|hek|heik|2eh|la2|akhbarak|akhbarik)\b/i,
-        /\b(habibi|habibti|sade2|albi|3ammi|amto)\b/i,
-        /\b(ana|inta|inti|nahna|huwe|hiye|btehki|3ende|fina|fini)\b/i,
-        /\d+[a-z]/i
-    ];
-    
-    let arabiziScore = 0;
-    for (const pattern of arabiziPatterns) {
-        if (pattern.test(text)) arabiziScore++;
-    }
-    
-    if (arabiziScore >= 1 && /[a-z]/i.test(text)) return 'arabizi';
-    return 'en';
-}
-
-function updateLangBadge(lang) {
-    langBadge.classList.remove('arabic', 'english', 'arabizi');
-    if (lang === 'ar') {
-        langBadge.textContent = '🇱🇧 عربي';
-        langBadge.classList.add('arabic');
-    } else if (lang === 'en') {
-        langBadge.textContent = '🇬🇧 EN';
-        langBadge.classList.add('english');
-    } else if (lang === 'arabizi') {
-        langBadge.textContent = '📝 Arabizi';
-        langBadge.classList.add('arabizi');
-    } else {
-        langBadge.textContent = '🌐 AUTO';
-    }
-}
-
-function updateStatus(text, type = 'normal') {
-    statusText.textContent = text;
-    statusDot.className = 'status-dot';
-    if (type === 'thinking') statusDot.classList.add('thinking');
-    if (type === 'error') statusDot.classList.add('error');
-}
-
-// ═══ User Name ═══
-function getUserName() { return localStorage.getItem('chkeir_username') || ''; }
-function saveUserName(name) { localStorage.setItem('chkeir_username', name); }
-
-function showWelcomeScreen() {
-    welcomeScreen.style.display = 'flex';
-    mainApp.style.display = 'none';
-    setTimeout(() => userNameInput.focus(), 100);
-}
-
-function showMainApp() {
-    welcomeScreen.style.display = 'none';
-    mainApp.style.display = 'flex';
-    userGreeting.textContent = userName;
-    userNameArabic = nameToArabic(userName);
-    
-    if (chatArea.children.length === 0) {
-        const welcomeMsg = `أهلاً ${userName}! Hi ${userName}!
-
-أنا CHKEIR ROBOT، مساعدك الذكي.
-
-بقدر ساعدك بـ:
-• محادثة بالعربي / English / Arabizi
-• قراءة الصور والـscreenshots
-• بناء مشاريع كاملة (مع تحميل ZIP)
-• الدراسة والمسائل
-• محادثة صوتية
-• ترجمة
-
-سؤال؟ اسألني!`;
-        addBotMessage(welcomeMsg);
-        if (voiceEnabled) {
-            // Use Arabic name for Arabic greeting
-            speak(`أهلاً ${userNameArabic || userName}، كيف فيني ساعدك اليوم؟`, 'ar');
+        splashScreen.style.display = 'none';
+        if (userName) {
+            showMainApp();
+        } else {
+            welcomeScreen.style.display = 'flex';
+            setTimeout(() => userNameInput.focus(), 300);
         }
-    }
+    }, 600);
+}, 2500);
+
+// Show toast
+function showToast(message, type = '') {
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-function handleEnterBtn() {
+// Theme toggle
+themeToggle.addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    localStorage.setItem('theme', currentTheme);
+    themeToggle.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+    showToast(currentTheme === 'dark' ? '🌙 Dark mode' : '☀️ Light mode');
+});
+
+// Enter name
+function handleEnter() {
     const name = userNameInput.value.trim();
-    if (!name || name.length < 2) {
+    if (name.length < 2) {
         userNameInput.style.borderColor = '#f87171';
-        setTimeout(() => userNameInput.style.borderColor = '', 1500);
+        userNameInput.focus();
+        showToast('اكتب اسمك / Enter your name', 'error');
+        setTimeout(() => userNameInput.style.borderColor = '', 1000);
         return;
     }
     userName = name;
-    userNameArabic = nameToArabic(name);
-    saveUserName(name);
+    localStorage.setItem('chkeir_username', name);
+    welcomeScreen.style.display = 'none';
     showMainApp();
 }
 
-function changeUserName() {
-    if (confirm('Change your name? / بدك تغيّر اسمك؟')) {
-        clearAll();
-        showWelcomeScreen();
+enterBtn.addEventListener('click', handleEnter);
+userNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleEnter();
+});
+
+function showMainApp() {
+    mainApp.style.display = 'flex';
+    const displayName = nameToArabic(userName);
+    userGreeting.textContent = displayName;
+    
+    if (!quickActionsVisible) quickActions.classList.add('hidden');
+    
+    if (chatArea.children.length === 0) {
+        const greeting = `أهلاً وسهلاً ${displayName}! تفضل، كيف يمكنني خدمتك؟\n\nHello ${userName}! How can I help you today?`;
+        addMessage('bot', greeting);
     }
+    
+    setupRecognition();
 }
 
-// ═══ Speech Recognition ═══
-function setupSpeechRecognition() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { micBtn.style.display = 'none'; return null; }
+// Add message
+function addMessage(role, text, imageUrl = null) {
+    const msg = document.createElement('div');
+    msg.className = `message ${role}`;
     
-    const rec = new SR();
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.lang = 'ar-LB';
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    if (role === 'bot') avatar.textContent = '🤖';
     
-    rec.onstart = () => {
-        isRecording = true;
-        micBtn.classList.add('recording');
-        updateStatus('Listening...', 'thinking');
-    };
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
     
-    rec.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        messageInput.value = text;
-        sendMessage();
-    };
+    const name = document.createElement('div');
+    name.className = 'bubble-name';
+    name.textContent = role === 'bot' ? 'CHKEIR ROBOT' : (nameToArabic(userName) || userName).toUpperCase();
+    bubble.appendChild(name);
     
-    rec.onerror = (event) => {
-        if (event.error === 'not-allowed') {
-            showToast('Mic permission needed', 'error');
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = 'bubble-image';
+        bubble.appendChild(img);
+    }
+    
+    if (role === 'bot') {
+        const parts = parseCodeFiles(text);
+        if (parts.length > 1) {
+            renderMessageWithFiles(bubble, parts);
+        } else {
+            const textDiv = document.createElement('div');
+            textDiv.className = 'bubble-text';
+            textDiv.innerHTML = formatText(text);
+            bubble.appendChild(textDiv);
         }
-        stopRecording();
-    };
+        
+        // Bubble actions for bot messages
+        const actions = document.createElement('div');
+        actions.className = 'bubble-actions';
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'bubble-action';
+        copyBtn.innerHTML = '<span>📋</span><span>نسخ</span>';
+        copyBtn.onclick = () => copyText(text);
+        actions.appendChild(copyBtn);
+        
+        if (voiceEnabled) {
+            const speakBtn = document.createElement('button');
+            speakBtn.className = 'bubble-action';
+            speakBtn.innerHTML = '<span>🔊</span><span>صوت</span>';
+            speakBtn.onclick = () => speak(text);
+            actions.appendChild(speakBtn);
+        }
+        
+        bubble.appendChild(actions);
+    } else {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'bubble-text';
+        textDiv.textContent = text;
+        bubble.appendChild(textDiv);
+    }
     
-    rec.onend = () => stopRecording();
-    return rec;
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    chatArea.appendChild(msg);
+    chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-function stopRecording() {
-    isRecording = false;
-    micBtn.classList.remove('recording');
-    updateStatus('Ready');
-}
-
-// ═══ TTS ═══
-function loadVoices() {
-    return new Promise((resolve) => {
-        let v = synthesis.getVoices();
-        if (v.length > 0) { resolve(v); return; }
-        synthesis.onvoiceschanged = () => resolve(synthesis.getVoices());
-        setTimeout(() => resolve(synthesis.getVoices()), 1000);
+// Copy text
+function copyText(text) {
+    const cleanText = text.replace(/==FILE: .+==[\s\S]*?==END==/g, '').trim();
+    navigator.clipboard.writeText(cleanText).then(() => {
+        showToast('✓ نُسخ', 'success');
+    }).catch(() => {
+        showToast('✗ فشل', 'error');
     });
 }
 
-async function initVoices() {
-    voices = await loadVoices();
-    console.log('Available voices:', voices.length);
-    const arabicVoices = voices.filter(v => v.lang.startsWith('ar'));
-    console.log('Arabic voices:', arabicVoices.map(v => v.lang + ' - ' + v.name));
-}
-
-function getBestArabicVoice() {
-    if (!voices || voices.length === 0) return null;
-    
-    // Try Lebanese first
-    let voice = voices.find(v => v.lang === 'ar-LB');
-    if (voice) return voice;
-    
-    // Then Saudi
-    voice = voices.find(v => v.lang === 'ar-SA');
-    if (voice) return voice;
-    
-    // Then Egyptian
-    voice = voices.find(v => v.lang === 'ar-EG');
-    if (voice) return voice;
-    
-    // Any Arabic
-    voice = voices.find(v => v.lang.startsWith('ar'));
-    if (voice) return voice;
-    
-    // Try Google Arabic
-    voice = voices.find(v => v.name.toLowerCase().includes('arabic'));
-    return voice || null;
-}
-
-function getBestEnglishVoice() {
-    if (!voices || voices.length === 0) return null;
-    return voices.find(v => v.lang === 'en-US') ||
-           voices.find(v => v.lang.startsWith('en')) ||
-           null;
-}
-
-// Replace English name with Arabic version in text for better TTS
-function prepareArabicTTS(text) {
-    if (!text || !userName) return text;
-    
-    // Replace English name with Arabic version
-    if (userNameArabic && userName !== userNameArabic) {
-        const regex = new RegExp(`\\b${userName}\\b`, 'gi');
-        text = text.replace(regex, userNameArabic);
-    }
-    
-    return text;
-}
-
-function speak(text, lang = 'auto') {
-    if (!voiceEnabled || !text) return;
-    synthesis.cancel();
-    
-    if (lang === 'auto') lang = detectLanguage(text);
-    
-    // Remove code blocks and file markers
-    let cleanText = text
-        .replace(/==FILE:[\s\S]*?==END==/g, '')
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/`[^`]*`/g, '')
-        .trim();
-    
-    if (!cleanText) return;
-    
-    // For Arabic: replace English name with Arabic version
-    if (lang === 'ar') {
-        cleanText = prepareArabicTTS(cleanText);
-    }
-    
-    const utterance = new SpeechSynthesisUtterance(cleanText.substring(0, 500));
-    
-    if (lang === 'ar' || lang === 'arabizi') {
-        utterance.lang = 'ar-LB';
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        const voice = getBestArabicVoice();
-        if (voice) {
-            utterance.voice = voice;
-            utterance.lang = voice.lang;
-        }
-    } else {
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
-        const voice = getBestEnglishVoice();
-        if (voice) utterance.voice = voice;
-    }
-    
-    utterance.volume = 1.0;
-    
-    utterance.onstart = () => updateStatus('Speaking...', 'thinking');
-    utterance.onend = () => updateStatus('Ready');
-    utterance.onerror = (e) => {
-        console.log('TTS error:', e);
-        updateStatus('Ready');
-    };
-    
-    synthesis.speak(utterance);
-}
-
-// ═══ Helpers ═══
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
+// Parse code files
 function parseCodeFiles(text) {
-    const files = [];
-    const regex = /==FILE:\s*([^=]+?)==\s*([\s\S]*?)\s*==END==/g;
+    const regex = /==FILE:\s*(.+?)==\n([\s\S]*?)==END==/g;
+    const parts = [];
+    let lastIndex = 0;
     let match;
     
     while ((match = regex.exec(text)) !== null) {
-        const fileName = match[1].trim();
-        let content = match[2].trim();
-        content = content.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
-        files.push({ name: fileName, content: content });
-    }
-    
-    return files;
-}
-
-function formatBotMessage(text) {
-    const files = parseCodeFiles(text);
-    
-    if (files.length === 0) {
-        let formatted = escapeHtml(text);
-        formatted = formatted.replace(/```(\w+)?\n?([\s\S]*?)```/g, (m, lang, code) => {
-            return `<pre><code>${code.trim()}</code></pre>`;
-        });
-        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-        return { html: formatted, files: [] };
-    }
-    
-    const parts = text.split(/(==FILE:\s*[^=]+?==\s*[\s\S]*?\s*==END==)/g);
-    let resultHtml = '';
-    let fileIndex = 0;
-    
-    for (const part of parts) {
-        if (part.match(/==FILE:/)) {
-            resultHtml += `<!--FILE_${fileIndex}-->`;
-            fileIndex++;
-        } else if (part.trim()) {
-            let formatted = escapeHtml(part.trim());
-            formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-            resultHtml += `<div>${formatted}</div>`;
+        if (match.index > lastIndex) {
+            const preText = text.substring(lastIndex, match.index).trim();
+            if (preText) parts.push({ type: 'text', content: preText });
         }
+        parts.push({ type: 'file', name: match[1].trim(), content: match[2].trim() });
+        lastIndex = regex.lastIndex;
     }
     
-    return { html: resultHtml, files };
+    if (lastIndex < text.length) {
+        const remaining = text.substring(lastIndex).trim();
+        if (remaining) parts.push({ type: 'text', content: remaining });
+    }
+    
+    if (parts.length === 0) parts.push({ type: 'text', content: text });
+    return parts;
 }
 
-// ═══ Add Messages ═══
-function addUserMessage(text, imageUrl = null) {
-    const lang = detectLanguage(text);
-    const isArabic = lang === 'ar';
+function renderMessageWithFiles(bubble, parts) {
+    const files = [];
     
-    const div = document.createElement('div');
-    div.className = 'message user';
-    
-    let imgHtml = imageUrl ? `<img src="${imageUrl}" class="bubble-image" alt="Uploaded">` : '';
-    
-    div.innerHTML = `
-        <div class="avatar"></div>
-        <div class="bubble" dir="${isArabic ? 'rtl' : 'ltr'}">
-            <div class="bubble-name">${escapeHtml(userName)}</div>
-            ${imgHtml}
-            <div class="bubble-text">${escapeHtml(text)}</div>
-        </div>
-    `;
-    chatArea.appendChild(div);
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
-
-function addBotMessage(text, isError = false) {
-    const lang = detectLanguage(text);
-    const isArabic = lang === 'ar';
-    const messageId = 'msg_' + Date.now() + '_' + (++codeFilesCounter);
-    
-    const { html, files } = formatBotMessage(text);
-    
-    const div = document.createElement('div');
-    div.className = 'message bot' + (isError ? ' error' : '');
-    div.id = messageId;
-    
-    div.innerHTML = `
-        <div class="avatar">🤖</div>
-        <div class="bubble" dir="${isArabic ? 'rtl' : 'ltr'}">
-            <div class="bubble-name">CHKEIR ROBOT</div>
-            <div class="bubble-text">${html}</div>
-        </div>
-    `;
-    
-    chatArea.appendChild(div);
-    
-    if (files.length > 0) {
-        allCodeFiles[messageId] = {};
-        files.forEach((file, idx) => {
-            allCodeFiles[messageId][file.name] = file.content;
-        });
-        
-        const bubbleText = div.querySelector('.bubble-text');
-        let newHtml = bubbleText.innerHTML;
-        
-        files.forEach((file, idx) => {
-            const fileBlockHtml = createFileBlockHtml(file.name, file.content, messageId, idx);
-            newHtml = newHtml.replace(`<!--FILE_${idx}-->`, fileBlockHtml);
-        });
-        
-        bubbleText.innerHTML = newHtml;
-        
-        if (files.length > 1) {
-            const zipBtnHtml = `
-                <button class="zip-download" onclick="downloadAllAsZip('${messageId}')">
-                    📦 Download All as ZIP (${files.length} files)
-                </button>
-                <div class="zip-info">${isArabic ? 'حمّل كل الملفات بـZIP واحد' : 'Download all files in one ZIP'}</div>
-            `;
-            bubbleText.innerHTML += zipBtnHtml;
+    parts.forEach(part => {
+        if (part.type === 'text') {
+            const textDiv = document.createElement('div');
+            textDiv.className = 'bubble-text';
+            textDiv.innerHTML = formatText(part.content);
+            bubble.appendChild(textDiv);
+        } else if (part.type === 'file') {
+            files.push({ name: part.name, content: part.content });
+            
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'code-file';
+            
+            const header = document.createElement('div');
+            header.className = 'code-file-header';
+            
+            const name = document.createElement('span');
+            name.className = 'code-file-name';
+            name.textContent = '📄 ' + part.name;
+            
+            const actions = document.createElement('div');
+            actions.className = 'code-file-actions';
+            
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'code-action-btn';
+            copyBtn.textContent = '📋 نسخ';
+            copyBtn.onclick = () => copyCode(copyBtn, part.content);
+            
+            const dlBtn = document.createElement('button');
+            dlBtn.className = 'code-action-btn';
+            dlBtn.textContent = '💾 تحميل';
+            dlBtn.onclick = () => downloadFile(part.name, part.content);
+            
+            actions.appendChild(copyBtn);
+            actions.appendChild(dlBtn);
+            header.appendChild(name);
+            header.appendChild(actions);
+            
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.textContent = part.content;
+            pre.appendChild(code);
+            
+            fileDiv.appendChild(header);
+            fileDiv.appendChild(pre);
+            bubble.appendChild(fileDiv);
         }
-        
-        attachCodeButtonListeners(div);
-    }
-    
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
-
-function createFileBlockHtml(fileName, content, messageId, idx) {
-    const safeContent = escapeHtml(content);
-    return `
-        <div class="code-file">
-            <div class="code-file-header">
-                <div class="code-file-name">📄 ${escapeHtml(fileName)}</div>
-                <div class="code-file-actions">
-                    <button class="code-action-btn copy-btn" data-msgid="${messageId}" data-fname="${escapeHtml(fileName)}">
-                        📋 Copy
-                    </button>
-                    <button class="code-action-btn download-btn" data-msgid="${messageId}" data-fname="${escapeHtml(fileName)}">
-                        💾 Download
-                    </button>
-                </div>
-            </div>
-            <pre><code>${safeContent}</code></pre>
-        </div>
-    `;
-}
-
-function attachCodeButtonListeners(messageDiv) {
-    messageDiv.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.onclick = () => {
-            const msgId = btn.dataset.msgid;
-            const fname = btn.dataset.fname;
-            const content = allCodeFiles[msgId]?.[fname];
-            if (content) {
-                navigator.clipboard.writeText(content).then(() => {
-                    btn.classList.add('copied');
-                    btn.innerHTML = '✅ Copied!';
-                    setTimeout(() => {
-                        btn.classList.remove('copied');
-                        btn.innerHTML = '📋 Copy';
-                    }, 2000);
-                    showToast('Code copied!', 'success');
-                });
-            }
-        };
     });
     
-    messageDiv.querySelectorAll('.download-btn').forEach(btn => {
-        btn.onclick = () => {
-            const msgId = btn.dataset.msgid;
-            const fname = btn.dataset.fname;
-            const content = allCodeFiles[msgId]?.[fname];
-            if (content) {
-                downloadFile(fname, content);
-                showToast(`Downloaded ${fname}`, 'success');
-            }
-        };
+    if (files.length > 1) {
+        const zipBtn = document.createElement('button');
+        zipBtn.className = 'zip-download';
+        zipBtn.innerHTML = `<span>📦</span><span>تحميل المشروع كاملاً (${files.length} ملف)</span>`;
+        zipBtn.onclick = () => downloadZip(zipBtn, files);
+        bubble.appendChild(zipBtn);
+        
+        const info = document.createElement('div');
+        info.className = 'zip-info';
+        info.textContent = `💎 ${files.length} ملفات جاهزة للتحميل`;
+        bubble.appendChild(info);
+    }
+}
+
+function copyCode(btn, content) {
+    navigator.clipboard.writeText(content).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✓ نُسخ';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = orig;
+            btn.classList.remove('copied');
+        }, 1500);
     });
 }
 
-function downloadFile(fileName, content) {
+function downloadFile(filename, content) {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = fileName;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    showToast(`💾 ${filename}`, 'success');
 }
 
-window.downloadAllAsZip = async function(messageId) {
-    const files = allCodeFiles[messageId];
-    if (!files || Object.keys(files).length === 0) return;
-    
-    const button = event.target;
-    button.classList.add('downloading');
-    button.textContent = '⏳ Creating ZIP...';
+async function downloadZip(btn, files) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span>⏳</span><span>جاري الإنشاء...</span>';
+    btn.classList.add('downloading');
+    btn.disabled = true;
     
     try {
         const zip = new JSZip();
-        for (const [fname, content] of Object.entries(files)) {
-            zip.file(fname, content);
-        }
-        
-        const blob = await zip.generateAsync({ 
-            type: 'blob',
-            compression: 'DEFLATE',
-            compressionOptions: { level: 6 }
-        });
-        
-        const projectName = 'chkeir-project-' + Date.now();
+        files.forEach(f => zip.file(f.name, f.content));
+        const blob = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${projectName}.zip`;
+        a.download = 'CHKEIR_ROBOT_Project.zip';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        button.classList.remove('downloading');
-        button.textContent = `📦 Download All as ZIP (${Object.keys(files).length} files)`;
-        showToast('ZIP downloaded!', 'success');
-    } catch (e) {
-        console.error('ZIP error:', e);
-        button.classList.remove('downloading');
-        button.textContent = '❌ Failed - try again';
-        showToast('ZIP failed', 'error');
+        btn.innerHTML = '<span>✓</span><span>تم التحميل!</span>';
+        showToast('📦 تم تحميل ZIP', 'success');
+        
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.remove('downloading');
+            btn.disabled = false;
+        }, 2500);
+    } catch (err) {
+        btn.innerHTML = '<span>✗</span><span>فشل</span>';
+        showToast('فشل التحميل', 'error');
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.remove('downloading');
+            btn.disabled = false;
+        }, 2000);
     }
-};
+}
 
+function formatText(text) {
+    if (!text) return '';
+    let result = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    return result;
+}
+
+// Typing indicator
 function showTyping() {
-    const div = document.createElement('div');
-    div.className = 'message bot';
-    div.id = 'typingMessage';
-    div.innerHTML = `
+    const msg = document.createElement('div');
+    msg.className = 'message bot';
+    msg.id = 'typing';
+    msg.innerHTML = `
         <div class="avatar">🤖</div>
         <div class="bubble">
             <div class="bubble-name">CHKEIR ROBOT</div>
-            <div class="typing-indicator"><span></span><span></span><span></span></div>
-        </div>
-    `;
-    chatArea.appendChild(div);
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>`;
+    chatArea.appendChild(msg);
     chatArea.scrollTop = chatArea.scrollHeight;
 }
 
 function hideTyping() {
-    const t = document.getElementById('typingMessage');
+    const t = document.getElementById('typing');
     if (t) t.remove();
 }
 
-// ═══ Image Handling ═══
+function setStatus(state, text) {
+    statusDot.className = `status-dot ${state}`;
+    statusText.textContent = text;
+}
+
+// Detect language
+function detectLanguage(text) {
+    const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+    const totalChars = text.replace(/\s/g, '').length;
+    if (totalChars === 0) return 'auto';
+    
+    const arabicRatio = arabicChars / totalChars;
+    if (arabicRatio > 0.3) return 'arabic';
+    
+    const arabiziPatterns = /\b(kifak|kifik|shu|sho|3am|7akili|yalla|khalas|hala2|hek|2eh|la2|habibi|ana|inta|inti|nahna|btehki|3ende|fina|fini|3atik|7eki|esmak|esmek|salam|marhaba|ahla|ahlan)\b/i;
+    if (arabiziPatterns.test(text) && /[a-z]/i.test(text)) return 'arabizi';
+    if (/[a-z]/i.test(text)) return 'english';
+    return 'auto';
+}
+
+function updateLangBadge(lang) {
+    currentLanguage = lang;
+    langBadge.className = 'lang-badge';
+    if (lang === 'arabic') {
+        langBadge.textContent = '🇱🇧 عربي';
+        langBadge.classList.add('arabic');
+    } else if (lang === 'arabizi') {
+        langBadge.textContent = '⚡ Arabizi';
+        langBadge.classList.add('arabizi');
+    } else if (lang === 'english') {
+        langBadge.textContent = '🇬🇧 English';
+        langBadge.classList.add('english');
+    } else {
+        langBadge.textContent = '🌐 AUTO';
+    }
+}
+
+// Send message
+async function sendMessage(text, imageData = null) {
+    if (!text.trim() && !imageData) return;
+    
+    const userMsg = text;
+    messageInput.value = '';
+    
+    const lang = detectLanguage(text);
+    updateLangBadge(lang);
+    
+    addMessage('user', userMsg, imageData);
+    
+    if (!imageData) {
+        conversationHistory.push({ role: 'user', content: userMsg });
+        if (conversationHistory.length > 20) {
+            conversationHistory = conversationHistory.slice(-20);
+        }
+    }
+    
+    setStatus('thinking', 'يفكر...');
+    showTyping();
+    
+    try {
+        let response, data;
+        
+        if (imageData) {
+            response = await fetch(VISION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: imageData,
+                    text: userMsg || 'حلّل هذه الصورة',
+                    userName: userName,
+                    userLang: lang
+                })
+            });
+        } else {
+            response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: conversationHistory,
+                    userName: userName,
+                    userLang: lang
+                })
+            });
+        }
+        
+        data = await response.json();
+        hideTyping();
+        
+        if (data.reply) {
+            addMessage('bot', data.reply);
+            
+            if (!imageData) {
+                conversationHistory.push({ role: 'assistant', content: data.reply });
+            }
+            
+            if (voiceEnabled) speak(data.reply);
+            setStatus('', 'جاهز');
+        } else {
+            const errorMsg = lang === 'english'
+                ? `Sorry ${userName}, please try again.`
+                : `عذراً ${nameToArabic(userName)}، تفضل بالمحاولة مرة أخرى.`;
+            addMessage('bot', errorMsg);
+            setStatus('', 'جاهز');
+        }
+    } catch (error) {
+        hideTyping();
+        const errorMsg = lang === 'english'
+            ? `Sorry ${userName}, connection issue. Please try again.`
+            : `عذراً ${nameToArabic(userName)}، مشكلة في الاتصال. تفضل بالمحاولة.`;
+        addMessage('bot', errorMsg);
+        setStatus('', 'جاهز');
+    }
+}
+
+// Speak (TTS)
+function speak(text) {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    
+    let cleanText = text
+        .replace(/==FILE: .+==[\s\S]*?==END==/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*/g, '')
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .trim();
+    
+    if (!cleanText) return;
+    if (cleanText.length > 250) cleanText = cleanText.substring(0, 250) + '...';
+    
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const isArabic = /[\u0600-\u06FF]/.test(cleanText);
+    
+    utterance.lang = isArabic ? 'ar-SA' : 'en-US';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
+    const englishVoice = voices.find(v => v.lang.startsWith('en'));
+    
+    if (isArabic && arabicVoice) utterance.voice = arabicVoice;
+    else if (!isArabic && englishVoice) utterance.voice = englishVoice;
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+// Voice recognition
+function setupRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        micBtn.style.display = 'none';
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'ar-SA';
+    
+    recognition.onstart = () => {
+        isRecording = true;
+        micBtn.classList.add('recording');
+        setStatus('thinking', 'استمع...');
+    };
+    
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        messageInput.value = transcript;
+        setTimeout(() => sendMessage(transcript), 300);
+    };
+    
+    recognition.onerror = () => {
+        isRecording = false;
+        micBtn.classList.remove('recording');
+        setStatus('', 'جاهز');
+    };
+    
+    recognition.onend = () => {
+        isRecording = false;
+        micBtn.classList.remove('recording');
+        setStatus('', 'جاهز');
+    };
+}
+
+micBtn.addEventListener('click', () => {
+    if (!recognition) {
+        showToast('المتصفح ما يدعم الصوت', 'error');
+        return;
+    }
+    if (isRecording) {
+        recognition.stop();
+    } else {
+        try {
+            const text = messageInput.value.trim();
+            recognition.lang = /[\u0600-\u06FF]/.test(text) ? 'ar-SA' : 'en-US';
+            recognition.start();
+        } catch (e) {}
+    }
+});
+
+// Image upload
 imgBtn.addEventListener('click', () => imageInput.click());
 
 imageInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Image too large (max 5MB)', 'error');
+    
+    if (file.size > 4 * 1024 * 1024) {
+        showToast('الصورة كبيرة جداً (max 4MB)', 'error');
         return;
     }
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
-        pendingImage = e.target.result;
-        previewImg.src = pendingImage;
+    reader.onload = (event) => {
+        selectedImage = event.target.result;
+        previewImg.src = selectedImage;
         imagePreview.style.display = 'flex';
     };
     reader.readAsDataURL(file);
 });
 
 removeImg.addEventListener('click', () => {
-    pendingImage = null;
+    selectedImage = null;
     imagePreview.style.display = 'none';
     imageInput.value = '';
 });
 
-// ═══ Send Message ═══
-async function sendMessage() {
+// Send button
+sendBtn.addEventListener('click', () => {
     const text = messageInput.value.trim();
-    if ((!text && !pendingImage) || isProcessing) return;
-    
-    isProcessing = true;
-    
-    const detectedLang = detectLanguage(text || 'image');
-    currentLang = detectedLang;
-    updateLangBadge(detectedLang);
-    
-    addUserMessage(text || '📷 [Image]', pendingImage);
-    messageInput.value = '';
-    
-    showTyping();
-    updateStatus('Thinking...', 'thinking');
-    
-    try {
-        const endpoint = pendingImage ? '/api/vision' : '/api/chat';
-        const body = pendingImage ? {
-            image: pendingImage,
-            text: text || 'What do you see in this image? Please analyze it.',
-            userName: userName,
-            userLang: detectedLang
-        } : {
-            messages: [...conversationHistory.slice(-10), { role: 'user', content: text }],
-            userName: userName,
-            userLang: detectedLang
-        };
-        
-        if (text && !pendingImage) {
-            conversationHistory.push({ role: 'user', content: text });
-        }
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        
-        hideTyping();
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        
-        const reply = data.reply;
-        const replyLang = detectLanguage(reply);
-        
-        addBotMessage(reply);
-        
-        if (!pendingImage) {
-            conversationHistory.push({ role: 'assistant', content: reply });
-            saveConversation();
-        }
-        
-        // For Arabizi input, speak in Arabic
-        let speakLang = replyLang;
-        if (detectedLang === 'arabizi' && replyLang !== 'en') speakLang = 'ar';
-        speak(reply, speakLang);
-        updateStatus('Ready');
-        
-        if (pendingImage) {
-            pendingImage = null;
+    if (text || selectedImage) {
+        const img = selectedImage;
+        sendMessage(text, img);
+        if (selectedImage) {
+            selectedImage = null;
             imagePreview.style.display = 'none';
             imageInput.value = '';
         }
-        
-    } catch (error) {
-        hideTyping();
-        console.error('Error:', error);
-        const errorMsg = currentLang === 'ar' 
-            ? 'آسف، صار في مشكلة. جرّب مرة ثانية.'
-            : 'Sorry, something went wrong. Try again.';
-        addBotMessage(errorMsg, true);
-        updateStatus('Error', 'error');
-    } finally {
-        isProcessing = false;
     }
-}
-
-// ═══ Save/Load ═══
-function saveConversation() {
-    try {
-        localStorage.setItem('chkeir_history_' + sessionId, JSON.stringify(conversationHistory.slice(-20)));
-    } catch (e) {}
-}
-
-function loadConversation() {
-    try {
-        const saved = localStorage.getItem('chkeir_history_' + sessionId);
-        if (saved) {
-            const history = JSON.parse(saved);
-            const recent = history.slice(-6);
-            chatArea.innerHTML = '';
-            recent.forEach(msg => {
-                if (msg.role === 'user') addUserMessage(msg.content);
-                else addBotMessage(msg.content);
-            });
-            conversationHistory = history;
-        }
-    } catch (e) {}
-}
-
-function clearAll() {
-    conversationHistory = [];
-    chatArea.innerHTML = '';
-    allCodeFiles = {};
-    localStorage.removeItem('chkeir_history_' + sessionId);
-}
-
-function clearConversation() {
-    if (confirm('Clear all messages? / تمسح كل المحادثة؟')) {
-        clearAll();
-        const greeting = currentLang === 'en' 
-            ? `Cleared! Start fresh, ${userName}.`
-            : `تمام ${userName}، بدأنا من جديد!`;
-        addBotMessage(greeting);
-    }
-}
-
-function toggleVoice() {
-    voiceEnabled = !voiceEnabled;
-    voiceIcon.textContent = voiceEnabled ? '🔊' : '🔇';
-    voiceToggle.classList.toggle('active', voiceEnabled);
-    if (!voiceEnabled) synthesis.cancel();
-}
-
-function toggleQuick() {
-    quickActions.classList.toggle('hidden');
-    quickToggle.classList.toggle('active');
-}
-
-// ═══ Quick Actions - Send directly ═══
-function setupQuickActions() {
-    document.querySelectorAll('.quick-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const prompt = btn.dataset.prompt;
-            messageInput.value = prompt;
-            sendMessage(); // Send directly instead of just filling input
-        });
-    });
-}
-
-// ═══ Events ═══
-enterBtn.addEventListener('click', handleEnterBtn);
-userNameInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleEnterBtn();
 });
 
-sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-});
-
-micBtn.addEventListener('click', () => {
-    if (!recognition) {
-        showToast('Voice not supported. Use Chrome.', 'error');
-        return;
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendBtn.click();
     }
-    if (isRecording) recognition.stop();
-    else { try { recognition.start(); } catch (e) {} }
 });
 
-voiceToggle.addEventListener('click', toggleVoice);
-quickToggle.addEventListener('click', toggleQuick);
-clearBtn.addEventListener('click', clearConversation);
-changeNameBtn.addEventListener('click', changeUserName);
+// Quick actions
+document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const prompt = btn.dataset.prompt;
+        sendMessage(prompt);
+    });
+});
 
-let deferredPrompt;
+// Voice toggle
+voiceToggle.addEventListener('click', () => {
+    voiceEnabled = !voiceEnabled;
+    localStorage.setItem('voice_enabled', voiceEnabled);
+    voiceToggle.classList.toggle('active', voiceEnabled);
+    voiceIcon.textContent = voiceEnabled ? '🔊' : '🔇';
+    if (!voiceEnabled) window.speechSynthesis.cancel();
+    showToast(voiceEnabled ? '🔊 الصوت مفعّل' : '🔇 الصوت مغلق');
+});
+
+// Quick toggle
+quickToggle.addEventListener('click', () => {
+    quickActionsVisible = !quickActionsVisible;
+    localStorage.setItem('quick_visible', quickActionsVisible);
+    quickActions.classList.toggle('hidden', !quickActionsVisible);
+    quickToggle.classList.toggle('active', quickActionsVisible);
+});
+
+// Clear
+clearBtn.addEventListener('click', () => {
+    if (confirm('مسح المحادثة؟ / Clear chat?')) {
+        chatArea.innerHTML = '';
+        conversationHistory = [];
+        const displayName = nameToArabic(userName);
+        addMessage('bot', `أهلاً وسهلاً ${displayName}! كيف يمكنني خدمتك؟`);
+        showToast('🗑️ تم المسح');
+    }
+});
+
+// Change name
+changeNameBtn.addEventListener('click', () => {
+    const newName = prompt('اسم جديد / New name:', userName);
+    if (newName && newName.trim().length >= 2) {
+        userName = newName.trim();
+        localStorage.setItem('chkeir_username', userName);
+        userGreeting.textContent = nameToArabic(userName);
+        showToast('✓ تم تغيير الاسم', 'success');
+    }
+});
+
+// Share
+shareBtn.addEventListener('click', async () => {
+    const shareData = {
+        title: 'CHKEIR ROBOT 🤖',
+        text: 'جرّب CHKEIR ROBOT - مساعد ذكي صنعه مهدي شقير',
+        url: window.location.href
+    };
+    
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+            showToast('✓ تم المشاركة', 'success');
+        } else {
+            await navigator.clipboard.writeText(window.location.href);
+            showToast('📋 الرابط منسوخ', 'success');
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showToast('📋 الرابط منسوخ', 'success');
+            });
+        }
+    }
+});
+
+// PWA Install
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
@@ -879,36 +740,204 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
         installBtn.style.display = 'none';
-        deferredPrompt = null;
+        showToast('✓ تم التثبيت', 'success');
     }
+    deferredPrompt = null;
 });
 
-// ═══ Init ═══
-async function init() {
-    hideSplash();
-    createParticles();
-    setupQuickActions();
-    
-    setTimeout(async () => {
-        recognition = setupSpeechRecognition();
-        await initVoices();
-        voiceToggle.classList.add('active');
-        
-        userName = getUserName();
-        if (userName) {
-            userNameArabic = nameToArabic(userName);
-            showMainApp();
-            loadConversation();
-        } else {
-            showWelcomeScreen();
-        }
-    }, 2200);
-    
-    console.log('✅ CHKEIR ROBOT v3 Ready');
+// Load voices
+if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+    };
 }
 
-init();
+// Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}
+
+// ═══════════════════════════════════
+// Menu Modal (About, How to Use, Feedback, Contact)
+// ═══════════════════════════════════
+
+const menuBtn = document.getElementById('menuBtn');
+const menuModal = document.getElementById('menuModal');
+const modalClose = document.getElementById('modalClose');
+const modalTabs = document.querySelectorAll('.modal-tab');
+const modalContents = document.querySelectorAll('.modal-content');
+
+if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
+        menuModal.style.display = 'flex';
+    });
+}
+
+if (modalClose) {
+    modalClose.addEventListener('click', () => {
+        menuModal.style.display = 'none';
+    });
+}
+
+if (menuModal) {
+    menuModal.addEventListener('click', (e) => {
+        if (e.target === menuModal) {
+            menuModal.style.display = 'none';
+        }
+    });
+}
+
+// Tab switching
+modalTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        modalTabs.forEach(t => t.classList.remove('active'));
+        modalContents.forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelector(`[data-content="${target}"]`).classList.add('active');
+    });
+});
+
+// Rating stars
+const stars = document.querySelectorAll('.star');
+const ratingText = document.getElementById('ratingText');
+let currentRating = 0;
+
+const ratingTexts = {
+    1: 'سيء جداً 😞',
+    2: 'سيء 😐',
+    3: 'متوسط 🙂',
+    4: 'جيد 😊',
+    5: 'ممتاز! 🤩'
+};
+
+stars.forEach(star => {
+    star.addEventListener('click', () => {
+        currentRating = parseInt(star.dataset.rating);
+        stars.forEach((s, i) => {
+            s.classList.toggle('active', i < currentRating);
+        });
+        if (ratingText) ratingText.textContent = ratingTexts[currentRating];
+    });
+    
+    star.addEventListener('mouseenter', () => {
+        const hover = parseInt(star.dataset.rating);
+        stars.forEach((s, i) => {
+            s.classList.toggle('active', i < hover);
+        });
+    });
+});
+
+const starsContainer = document.querySelector('.stars');
+if (starsContainer) {
+    starsContainer.addEventListener('mouseleave', () => {
+        stars.forEach((s, i) => {
+            s.classList.toggle('active', i < currentRating);
+        });
+    });
+}
+
+// Send feedback
+const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+const feedbackText = document.getElementById('feedbackText');
+
+if (sendFeedbackBtn) {
+    sendFeedbackBtn.addEventListener('click', () => {
+        if (currentRating === 0) {
+            showToast('اختر تقييماً أولاً ⭐', 'error');
+            return;
+        }
+        
+        const feedback = feedbackText.value.trim();
+        const userN = nameToArabic(userName);
+        
+        const message = `📝 اقتراح من ${userN}:\n\n⭐ التقييم: ${currentRating}/5\n💬 الرسالة: ${feedback || '(لا توجد ملاحظة)'}\n\nمن CHKEIR ROBOT 🤖`;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(message).then(() => {
+            showToast('✓ تم نسخ الرسالة - أرسلها للصانع', 'success');
+            
+            setTimeout(() => {
+                // Reset
+                currentRating = 0;
+                stars.forEach(s => s.classList.remove('active'));
+                if (ratingText) ratingText.textContent = 'اضغط على نجمة';
+                feedbackText.value = '';
+                menuModal.style.display = 'none';
+            }, 2000);
+        }).catch(() => {
+            showToast('فشل النسخ', 'error');
+        });
+    });
+}
+
+// Contact actions
+document.querySelectorAll('.contact-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const action = card.dataset.action;
+        const url = window.location.href;
+        const text = 'جرّب CHKEIR ROBOT - مساعد ذكي صنعه مهدي شقير 🤖';
+        
+        switch (action) {
+            case 'whatsapp':
+                window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`, '_blank');
+                break;
+            case 'share':
+                if (navigator.share) {
+                    navigator.share({ title: 'CHKEIR ROBOT', text, url });
+                } else {
+                    navigator.clipboard.writeText(url);
+                    showToast('📋 الرابط منسوخ', 'success');
+                }
+                break;
+            case 'copy':
+                navigator.clipboard.writeText(url);
+                showToast('📋 الرابط منسوخ', 'success');
+                break;
+            case 'install':
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                } else {
+                    showToast('💡 من المتصفح: ⋮ → "تثبيت التطبيق"', 'success');
+                }
+                break;
+        }
+    });
+});
+
+// Share buttons
+document.querySelectorAll('.share-btn-modal').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const platform = btn.dataset.platform;
+        const url = window.location.href;
+        const text = 'جرّب CHKEIR ROBOT - مساعد ذكي مجاني صنعه مهدي شقير 🤖';
+        
+        let shareUrl = '';
+        switch (platform) {
+            case 'whatsapp':
+                shareUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`;
+                break;
+            case 'telegram':
+                shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+                break;
+            case 'facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+                break;
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+                break;
+        }
+        
+        if (shareUrl) window.open(shareUrl, '_blank', 'width=600,height=400');
+    });
+});
+
+console.log('🤖 CHKEIR ROBOT v6 ready');
