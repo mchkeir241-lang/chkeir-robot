@@ -242,7 +242,7 @@ Be helpful, concise, polite.`;
                     { role: 'system', content: SYSTEM_PROMPT },
                     ...messages
                 ],
-                max_tokens: 2500,
+                max_tokens: 1800,
                 temperature: 0.5,
                 top_p: 0.85
             })

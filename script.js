@@ -1,3 +1,10 @@
+
+// Session isolation
+let sessionId = localStorage.getItem('chkeir_session');
+if (!sessionId) {
+  sessionId = crypto.randomUUID();
+  localStorage.setItem('chkeir_session', sessionId);
+}
 // ═══════════════════════════════════════════════
 // 🤖 CHKEIR ROBOT - v3 (Enhanced Arabic Support)
 // Created by Mahdi Chkeir 🇱🇧
