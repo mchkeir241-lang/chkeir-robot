@@ -1,26 +1,20 @@
-# 🤖 CHKEIR ROBOT v6
+# 🤖 CHKEIR ROBOT
 
 Smart AI Assistant by **Mahdi Chkeir** 🇱🇧
 
 ## ✨ Features
-- 🤖 AI Chat (Llama 3.3 70B via Groq)
+- 🤖 Smart AI Chat
 - 🌙 Dark/Light Theme
 - 🎙️ Voice Input/Output
 - 📷 Image Analysis
-- 💻 Code generation with ZIP download
+- 💻 Code generation
 - 📤 Share button
-- 🇱🇧 Formal Arabic + Shia perspective
+- 🇱🇧 Formal Arabic
 - 📱 PWA (Installable)
 
-## 🚀 Tech
-- HTML/CSS/JS frontend
-- Vercel serverless functions
-- Groq API (Llama 3.3 + Vision)
-- JSZip for downloads
-
-## 📦 Setup
-1. Deploy to Vercel
-2. Set `GROQ_API_KEY` in env vars
-3. Get free key: https://console.groq.com
+## 🚀 Deploy
+1. Upload to Vercel
+2. Set environment variables
+3. Done!
 
 Made with ❤️ in Lebanon

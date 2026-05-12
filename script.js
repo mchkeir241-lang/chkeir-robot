@@ -1,4 +1,4 @@
-// CHKEIR ROBOT v6 - Level 2 Upgrades
+// CHKEIR ROBOT v7 - Enhanced with Auto-save, Stats, History
 const API_URL = '/api/chat';
 const VISION_URL = '/api/vision';
 
@@ -12,6 +12,40 @@ let isRecording = false;
 let recognition = null;
 let selectedImage = null;
 let deferredPrompt = null;
+
+// Stats tracking
+let userStats = JSON.parse(localStorage.getItem('user_stats') || '{"messageCount": 0, "firstUse": null, "lastUse": null}');
+if (!userStats.firstUse) {
+    userStats.firstUse = new Date().toISOString();
+    localStorage.setItem('user_stats', JSON.stringify(userStats));
+}
+
+function updateStats() {
+    userStats.messageCount = (userStats.messageCount || 0) + 1;
+    userStats.lastUse = new Date().toISOString();
+    localStorage.setItem('user_stats', JSON.stringify(userStats));
+}
+
+function saveConversation() {
+    try {
+        const saved = {
+            history: conversationHistory.slice(-30),
+            timestamp: new Date().toISOString(),
+            userName: userName
+        };
+        localStorage.setItem('saved_conversation', JSON.stringify(saved));
+    } catch (e) {}
+}
+
+function loadConversation() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('saved_conversation') || 'null');
+        if (saved && saved.userName === userName && saved.history && saved.history.length > 0) {
+            return saved.history;
+        }
+    } catch (e) {}
+    return null;
+}
 
 // Apply theme
 document.documentElement.setAttribute('data-theme', currentTheme);
@@ -136,9 +170,22 @@ function showMainApp() {
     
     if (!quickActionsVisible) quickActions.classList.add('hidden');
     
+    // Try to restore previous conversation
+    const savedHistory = loadConversation();
+    
     if (chatArea.children.length === 0) {
-        const greeting = `أهلاً وسهلاً ${displayName}! تفضل، كيف يمكنني خدمتك؟\n\nHello ${userName}! How can I help you today?`;
-        addMessage('bot', greeting);
+        if (savedHistory && savedHistory.length > 0) {
+            // Restore previous conversation
+            conversationHistory = savedHistory;
+            savedHistory.forEach(msg => {
+                addMessage(msg.role === 'user' ? 'user' : 'bot', msg.content);
+            });
+            showToast('📂 تم استرجاع المحادثة السابقة', 'success');
+        } else {
+            // Fresh greeting
+            const greeting = `أهلاً وسهلاً ${displayName}! تفضل، كيف يمكنني خدمتك؟\n\nHello ${userName}! How can I help you today?`;
+            addMessage('bot', greeting);
+        }
     }
     
     setupRecognition();
@@ -504,6 +551,9 @@ async function sendMessage(text, imageData = null) {
                 conversationHistory.push({ role: 'assistant', content: data.reply });
             }
             
+            updateStats();
+            saveConversation();
+            
             if (voiceEnabled) speak(data.reply);
             setStatus('', 'جاهز');
         } else {
@@ -690,6 +740,7 @@ clearBtn.addEventListener('click', () => {
     if (confirm('مسح المحادثة؟ / Clear chat?')) {
         chatArea.innerHTML = '';
         conversationHistory = [];
+        localStorage.removeItem('saved_conversation');
         const displayName = nameToArabic(userName);
         addMessage('bot', `أهلاً وسهلاً ${displayName}! كيف يمكنني خدمتك؟`);
         showToast('🗑️ تم المسح');
@@ -731,6 +782,52 @@ shareBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// Export conversation
+const exportBtn = document.getElementById('exportBtn');
+if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+        if (conversationHistory.length === 0) {
+            showToast('لا توجد محادثة لحفظها', 'error');
+            return;
+        }
+        
+        const displayName = nameToArabic(userName);
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('ar-LB');
+        const timeStr = now.toLocaleTimeString('ar-LB');
+        
+        let text = `╔═══════════════════════════════════╗\n`;
+        text += `   CHKEIR ROBOT 🤖 - محادثة محفوظة\n`;
+        text += `╚═══════════════════════════════════╝\n\n`;
+        text += `👤 المستخدم: ${displayName}\n`;
+        text += `📅 التاريخ: ${dateStr}\n`;
+        text += `🕐 الوقت: ${timeStr}\n\n`;
+        text += `─────────────────────────────────────\n\n`;
+        
+        conversationHistory.forEach(msg => {
+            const name = msg.role === 'user' ? `👤 ${displayName}` : '🤖 CHKEIR ROBOT';
+            text += `${name}:\n${msg.content}\n\n`;
+            text += `─────────────────────────────────────\n\n`;
+        });
+        
+        text += `\n💎 صنع بـCHKEIR ROBOT\n`;
+        text += `🌐 chkeir-robot.vercel.app\n`;
+        text += `🇱🇧 صنع في لبنان من مهدي شقير\n`;
+        
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chkeir_chat_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('💾 تم تحميل المحادثة', 'success');
+    });
+}
 
 // PWA Install
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -778,6 +875,17 @@ const modalContents = document.querySelectorAll('.modal-content');
 if (menuBtn) {
     menuBtn.addEventListener('click', () => {
         menuModal.style.display = 'flex';
+        
+        // Update stats display
+        const statMessages = document.getElementById('statMessages');
+        const statDays = document.getElementById('statDays');
+        if (statMessages) statMessages.textContent = userStats.messageCount || 0;
+        if (statDays && userStats.firstUse) {
+            const firstDate = new Date(userStats.firstUse);
+            const today = new Date();
+            const days = Math.max(1, Math.ceil((today - firstDate) / (1000 * 60 * 60 * 24)));
+            statDays.textContent = days;
+        }
     });
 }
 

@@ -11,8 +11,11 @@ export default async function handler(req, res) {
     
     if (!image) return res.status(400).json({ error: 'Image required' });
     
-    const GROQ_API_KEY = process.env.GROQ_API_KEY;
-    if (!GROQ_API_KEY) return res.status(500).json({ error: 'API key not configured' });
+    const AI_API_KEY = process.env.AI_API_KEY || process.env.GROQ_API_KEY;
+    const AI_VISION_MODEL = process.env.AI_VISION_MODEL || 'llama-3.2-90b-vision-preview';
+    const AI_ENDPOINT = process.env.AI_ENDPOINT || 'https://api.groq.com/openai/v1/chat/completions';
+    
+    if (!AI_API_KEY) return res.status(500).json({ error: 'API key not configured' });
     
     const name = (userName && userName.trim()) || 'صديقي';
     const userQuestion = text || 'ما الذي تراه في هذه الصورة؟ حلّلها بدقة.';
@@ -48,14 +51,14 @@ Analyze the image carefully:
 - Text: read and translate/explain`;
     
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch(AI_ENDPOINT, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': `Bearer ${AI_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'llama-3.2-90b-vision-preview',
+                model: AI_VISION_MODEL,
                 messages: [
                     {
                         role: 'user',
