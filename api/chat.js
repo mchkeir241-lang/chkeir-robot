@@ -41,16 +41,16 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     
     const { messages, userName, userLang } = req.body;
+
+    // Prevent token overflow from very long chats
+    const limitedMessages = (messages || []).slice(-8).map(msg => ({
+        role: msg.role,
+        content: String(msg.content || '').slice(0, 2000)
+    }));
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'Messages required' });
     }
-
-    // Prevent crashes from huge chats
-    const limitedMessages = messages.slice(-10).map(msg => ({
-        role: msg.role,
-        content: String(msg.content || '').slice(0, 3000)
-    }));
     
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     if (!GROQ_API_KEY) {
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     const arabicName = nameToArabic(englishName);
     
     // Detect language
-    const lastUserMsg = messages.filter(m => m.role === 'user').pop()?.content || '';
+    const lastUserMsg = limitedMessages.filter(m => m.role === 'user').pop()?.content || '';
     const arabicChars = (lastUserMsg.match(/[\u0600-\u06FF]/g) || []).length;
     const totalChars = lastUserMsg.replace(/\s/g, '').length;
     const isArabicInput = totalChars > 0 && (arabicChars / totalChars) > 0.3;
@@ -78,11 +78,7 @@ export default async function handler(req, res) {
 
 ═══ قواعد صارمة جداً ═══
 
-1. اللغة:
-   - إذا كتب المستخدم بالعربية أو Arabizi رد بالعربية فقط
-   - ممنوع خلط الإنجليزية داخل الرد العربي
-   - إذا كتب المستخدم بالإنجليزية فقط رد بالإنجليزية فقط
-   - حافظ على نفس لغة المستخدم دائماً
+1. اللغة: العربية الفصحى المهذبة فقط
    ✅ "وعليكم السلام ورحمة الله وبركاته"
    ✅ "حضرتك" "تفضل" "بكل سرور"
    ❌ لا تخلط مع الإنجليزية
@@ -248,9 +244,9 @@ Be helpful, concise, polite.`;
             },
             body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
-                messages: [
+                messages: limitedMessages, [
                     { role: 'system', content: SYSTEM_PROMPT },
-                    ...limitedMessages
+                    ...messages
                 ],
                 max_tokens: 2500,
                 temperature: 0.5,
@@ -301,12 +297,4 @@ Be helpful, concise, polite.`;
         
         return res.status(200).json({ reply: friendlyError });
     }
-}
-
-
-// Force Arabic cleanup
-function cleanArabicResponse(text) {
-    return text
-        .replace(/\b(Okay|ok|Hello|Hi|Thanks|Thank you|Sorry)\b/gi, '')
-        .replace(/\?/g, '؟');
 }
