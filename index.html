@@ -10,6 +10,9 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="stars-bg" id="starsBg"></div>
@@ -337,6 +340,12 @@
                     </svg>
                 </button>
                 
+                <button class="file-btn" id="fileBtn" title="رفع ملف PDF/Word/ZIP">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                    </svg>
+                </button>
+                
                 <button class="mic-btn" id="micBtn" title="صوت">
                     <svg viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
@@ -353,6 +362,7 @@
                 </button>
                 
                 <input type="file" id="imageInput" accept="image/*" style="display:none;">
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.md,.json,.js,.py,.html,.css,.csv,.xml,.yaml,.yml" style="display:none;">
             </div>
             
             <div class="actions">

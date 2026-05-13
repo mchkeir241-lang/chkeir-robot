@@ -682,6 +682,227 @@ imageInput.addEventListener('change', (e) => {
     reader.readAsDataURL(file);
 });
 
+// File handling (PDF, Word, ZIP, text, code)
+const fileBtn = document.getElementById('fileBtn');
+const fileInput = document.getElementById('fileInput');
+
+if (fileBtn) {
+    fileBtn.addEventListener('click', () => fileInput.click());
+}
+
+if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('الملف كبير جداً (max 10MB)', 'error');
+            return;
+        }
+        
+        // Show loading status
+        setStatus('thinking', `قراءة ${file.name}...`);
+        showToast(`📄 جاري قراءة ${file.name}...`);
+        
+        try {
+            const content = await readFile(file);
+            if (!content || content.trim().length === 0) {
+                showToast('الملف فاضي أو ما قدرنا نقرأه', 'error');
+                setStatus('', 'جاهز');
+                fileInput.value = '';
+                return;
+            }
+            
+            // Limit content size (40KB of text max)
+            const maxLen = 40000;
+            let fileText = content;
+            let truncated = false;
+            if (content.length > maxLen) {
+                fileText = content.substring(0, maxLen);
+                truncated = true;
+            }
+            
+            const fileSize = (file.size / 1024).toFixed(1);
+            const fileExt = file.name.split('.').pop().toUpperCase();
+            
+            // Build smart prompt
+            const promptText = `📎 الملف المرفق: ${file.name} (${fileExt}, ${fileSize} KB)${truncated ? ' [الملف كبير - تم قراءة جزء منه]' : ''}
+
+📄 محتوى الملف:
+${fileText}
+
+---
+${messageInput.value.trim() || 'الرجاء تحليل هذا الملف بدقة، اشرح محتواه، وقدم لي معلومات مفيدة عنه.'}`;
+            
+            // Send automatically
+            messageInput.value = '';
+            setStatus('', 'جاهز');
+            showToast(`✅ تم رفع ${file.name}`, 'success');
+            
+            // Auto-send the message
+            await sendMessage(promptText);
+            
+        } catch (err) {
+            console.error('File read error:', err);
+            showToast(`فشل قراءة الملف: ${err.message || 'غير معروف'}`, 'error');
+            setStatus('', 'جاهز');
+        }
+        
+        // Reset input
+        fileInput.value = '';
+    });
+}
+
+// Read different file types
+async function readFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    
+    // Text files - read as text
+    if (['txt', 'md', 'json', 'js', 'py', 'html', 'css', 'csv', 'xml', 'ts', 'jsx', 'tsx', 'c', 'cpp', 'java', 'php', 'rb', 'go', 'rs', 'swift', 'kt', 'sql', 'yaml', 'yml', 'env', 'log', 'bat', 'sh'].includes(ext)) {
+        return await file.text();
+    }
+    
+    // PDF
+    if (ext === 'pdf') {
+        return await readPDF(file);
+    }
+    
+    // Word
+    if (ext === 'docx' || ext === 'doc') {
+        return await readWord(file);
+    }
+    
+    // Excel/Spreadsheet
+    if (ext === 'xlsx' || ext === 'xls') {
+        return await readExcel(file);
+    }
+    
+    // ZIP
+    if (ext === 'zip') {
+        return await readZIP(file);
+    }
+    
+    // Fallback - try as text
+    return await file.text();
+}
+
+// Read Excel
+async function readExcel(file) {
+    if (typeof XLSX === 'undefined') {
+        throw new Error('مكتبة Excel غير محملة');
+    }
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    
+    let result = '';
+    const maxSheets = 5;
+    let sheetCount = 0;
+    
+    for (const sheetName of workbook.SheetNames) {
+        if (sheetCount >= maxSheets) break;
+        
+        const worksheet = workbook.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(worksheet);
+        
+        result += `\n═══ 📊 ورقة: ${sheetName} ═══\n`;
+        result += csv.substring(0, 5000);
+        
+        if (csv.length > 5000) {
+            result += '\n...[تم اقتطاع المحتوى]';
+        }
+        
+        sheetCount++;
+    }
+    
+    if (workbook.SheetNames.length > maxSheets) {
+        result += `\n\n[ملاحظة: الملف يحتوي على ${workbook.SheetNames.length} ورقة، تم قراءة أول ${maxSheets} فقط]`;
+    }
+    
+    return result;
+}
+
+// Read PDF
+async function readPDF(file) {
+    if (typeof pdfjsLib === 'undefined') {
+        throw new Error('مكتبة PDF غير محملة');
+    }
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let text = '';
+    const maxPages = Math.min(pdf.numPages, 50);
+    
+    for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        text += `\n--- صفحة ${i} ---\n${pageText}\n`;
+    }
+    
+    if (pdf.numPages > 50) {
+        text += `\n\n[ملاحظة: الملف يحتوي على ${pdf.numPages} صفحة، تم قراءة أول 50 صفحة فقط]`;
+    }
+    
+    return text;
+}
+
+// Read Word document
+async function readWord(file) {
+    if (typeof mammoth === 'undefined') {
+        throw new Error('مكتبة Word غير محملة');
+    }
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+}
+
+// Read ZIP file
+async function readZIP(file) {
+    if (typeof JSZip === 'undefined') {
+        throw new Error('مكتبة ZIP غير محملة');
+    }
+    
+    const zip = await JSZip.loadAsync(file);
+    const files = [];
+    const maxFiles = 20;
+    let count = 0;
+    
+    for (const filename in zip.files) {
+        if (count >= maxFiles) break;
+        const zipEntry = zip.files[filename];
+        
+        if (zipEntry.dir) continue;
+        
+        // Skip binary files
+        const ext = filename.split('.').pop().toLowerCase();
+        const textExts = ['txt', 'md', 'json', 'js', 'py', 'html', 'css', 'csv', 'xml', 'ts', 'jsx', 'tsx', 'c', 'cpp', 'java', 'php', 'rb', 'go', 'rs', 'sql', 'yml', 'yaml'];
+        
+        if (!textExts.includes(ext)) {
+            files.push(`📁 ${filename} (ملف غير نصي - ${(zipEntry._data.uncompressedSize / 1024).toFixed(1)} KB)`);
+            continue;
+        }
+        
+        try {
+            const content = await zipEntry.async('string');
+            files.push(`\n═══ 📄 ${filename} ═══\n${content.substring(0, 3000)}${content.length > 3000 ? '\n...[تم اقتطاع المحتوى]' : ''}`);
+            count++;
+        } catch (e) {
+            files.push(`❌ فشل قراءة: ${filename}`);
+        }
+    }
+    
+    if (Object.keys(zip.files).length > maxFiles) {
+        files.push(`\n[ملاحظة: الـZIP يحتوي على ${Object.keys(zip.files).length} ملف، تم قراءة أول ${maxFiles} ملف فقط]`);
+    }
+    
+    return files.join('\n');
+}
+
 removeImg.addEventListener('click', () => {
     selectedImage = null;
     imagePreview.style.display = 'none';
@@ -855,10 +1076,49 @@ if (window.speechSynthesis) {
     };
 }
 
-// Service Worker for PWA
+// Service Worker with SILENT auto-update
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js').then((reg) => {
+            // Check for updates immediately
+            reg.update();
+            
+            // Check for updates every 2 minutes
+            setInterval(() => {
+                reg.update();
+            }, 120000);
+            
+            // Auto-apply updates silently
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // Silent update - just apply it
+                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                }
+            });
+        }).catch(() => {});
+        
+        // Reload silently when SW updates
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                refreshing = true;
+                window.location.reload();
+            }
+        });
+    });
+    
+    // Also check on visibility change (when user returns to tab)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+                if (reg) reg.update();
+            });
+        }
     });
 }
 
@@ -1048,4 +1308,111 @@ document.querySelectorAll('.share-btn-modal').forEach(btn => {
     });
 });
 
-console.log('🤖 CHKEIR ROBOT v6 ready');
+// Drag and Drop file support
+const appElement = document.getElementById('mainApp');
+
+if (appElement) {
+    let dragCounter = 0;
+    
+    appElement.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        appElement.classList.add('drag-over');
+    });
+    
+    appElement.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter === 0) {
+            appElement.classList.remove('drag-over');
+        }
+    });
+    
+    appElement.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    
+    appElement.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        appElement.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length === 0) return;
+        
+        const file = files[0];
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        // If image, handle as image
+        if (file.type.startsWith('image/')) {
+            if (file.size > 4 * 1024 * 1024) {
+                showToast('الصورة كبيرة جداً (max 4MB)', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                selectedImage = event.target.result;
+                previewImg.src = selectedImage;
+                imagePreview.style.display = 'flex';
+                showToast('🖼️ تم رفع الصورة، اكتب سؤالك واضغط Send', 'success');
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
+        
+        // Otherwise handle as file
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('الملف كبير جداً (max 10MB)', 'error');
+            return;
+        }
+        
+        setStatus('thinking', `قراءة ${file.name}...`);
+        showToast(`📄 جاري قراءة ${file.name}...`);
+        
+        try {
+            const content = await readFile(file);
+            if (!content || content.trim().length === 0) {
+                showToast('الملف فاضي أو ما قدرنا نقرأه', 'error');
+                setStatus('', 'جاهز');
+                return;
+            }
+            
+            const maxLen = 40000;
+            let fileText = content;
+            let truncated = false;
+            if (content.length > maxLen) {
+                fileText = content.substring(0, maxLen);
+                truncated = true;
+            }
+            
+            const fileSize = (file.size / 1024).toFixed(1);
+            const fileExt = ext.toUpperCase();
+            
+            const promptText = `📎 الملف المرفق: ${file.name} (${fileExt}, ${fileSize} KB)${truncated ? ' [الملف كبير - تم قراءة جزء منه]' : ''}
+
+📄 محتوى الملف:
+${fileText}
+
+---
+${messageInput.value.trim() || 'الرجاء تحليل هذا الملف بدقة، اشرح محتواه، وقدم لي معلومات مفيدة عنه.'}`;
+            
+            messageInput.value = '';
+            setStatus('', 'جاهز');
+            showToast(`✅ تم رفع ${file.name}`, 'success');
+            
+            await sendMessage(promptText);
+            
+        } catch (err) {
+            console.error('Drop file error:', err);
+            showToast(`فشل قراءة الملف: ${err.message}`, 'error');
+            setStatus('', 'جاهز');
+        }
+    });
+}
+
+console.log('🤖 CHKEIR ROBOT v11 ready');
